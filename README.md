@@ -357,7 +357,7 @@ Smart-Landslide-Simulator/
 
 1. **Clone the repository**
    ```bash
-   git clone https://github.com/kosaladathapththu/smart-landslide-simulator.git
+   git clone https://github.com/kosaladathapththu/Landslide_Ditection-IOT
    cd smart-landslide-simulator
    ```
 
@@ -462,7 +462,7 @@ Special thanks to:
 
 **Project Lead:** Kosala D. Athapaththu  
 **Institution:** National Institute of Business Management  
-**Email:** [Insert Email]
+**Email:** Kosalaathapaththu1234@gmail.com
 
 <br>
 
