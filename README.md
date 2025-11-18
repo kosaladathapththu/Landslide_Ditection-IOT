@@ -212,7 +212,7 @@ Develop a **cost-effective IoT-based Smart Landslide Simulator & Early Warning S
 <table>
 <tr>
 <td align="center" width="20%">
-<img src="https://via.placeholder.com/150/FF6B6B/FFFFFF?text=KDA" width="100px" style="border-radius: 50%"/>
+<img src="https://github.com/kosaladathapththu.png" width="100px" style="border-radius: 50%"/>
 <br />
 <strong>⭐ Kosala D. Athapaththu</strong>
 <br />
