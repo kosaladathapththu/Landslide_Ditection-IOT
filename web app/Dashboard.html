@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Landslide Early Warning Dashboard</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f2f4f8;
+      margin: 0;
+      padding: 0;
+      text-align: center;
+    }
+    header {
+      background: #111827;
+      color: #fff;
+      padding: 20px;
+    }
+    h1 {
+      margin: 0;
+    }
+    #stateBox {
+      margin: 20px auto;
+      padding: 20px;
+      width: 60%;
+      border-radius: 10px;
+      color: #fff;
+      font-size: 24px;
+      font-weight: bold;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 15px;
+      padding: 0 20px 30px;
+      max-width: 900px;
+      margin: 0 auto;
+    }
+    .card {
+      background: #ffffff;
+      border-radius: 10px;
+      padding: 15px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      font-size: 18px;
+    }
+    .label {
+      font-weight: bold;
+      color: #374151;
+    }
+    .value {
+      font-size: 22px;
+      margin-top: 5px;
+    }
+    .footer {
+      font-size: 12px;
+      color: #6b7280;
+      margin-bottom: 15px;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>🌋 Landslide Early Warning System</h1>
+    <p>Landslide Detection – Firebase Realtime Dashboard</p>
+  </header>
+
+  <div id="stateBox">Loading state...</div>
+
+  <div class="grid">
+    <div class="card">
+      <div class="label">Soil Moisture</div>
+      <div class="value" id="soilValue">--</div>
+    </div>
+    <div class="card">
+      <div class="label">Tilt Sensor 1</div>
+      <div class="value" id="tilt1Value">--</div>
+    </div>
+    <div class="card">
+      <div class="label">Tilt Sensor 2</div>
+      <div class="value" id="tilt2Value">--</div>
+    </div>
+    <div class="card">
+      <div class="label">Vibration Level</div>
+      <div class="value" id="vibValue">--</div>
+    </div>
+    <div class="card">
+      <div class="label">Rain</div>
+      <div class="value" id="rainValue">--</div>
+    </div>
+    <div class="card">
+      <div class="label">Servo Position</div>
+      <div class="value" id="servoValue">--</div>
+    </div>
+  </div>
+
+  <div class="footer" id="updatedText">
+    Waiting for data from Firebase...
+  </div>
+
+  <!-- Firebase + App Code -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
+    import { getDatabase, ref, get } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-database.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyCrUFSVab6xJkxE95LjMUm9w_xiq2m89L0",
+      authDomain: "landslide-detection-50870.firebaseapp.com",
+      projectId: "landslide-detection-50870",
+      storageBucket: "landslide-detection-50870.firebasestorage.app",
+      messagingSenderId: "710587722180",
+      appId: "1:710587722180:web:c9fa92c9d31cb54f329c91",
+      databaseURL: "https://landslide-detection-50870-default-rtdb.asia-southeast1.firebasedatabase.app/"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+    const landslideRef = ref(db, "landslide");
+
+    // DOM references
+    const stateBox = document.getElementById("stateBox");
+    const soilEl   = document.getElementById("soilValue");
+    const tilt1El  = document.getElementById("tilt1Value");
+    const tilt2El  = document.getElementById("tilt2Value");
+    const vibEl    = document.getElementById("vibValue");
+    const rainEl   = document.getElementById("rainValue");
+    const servoEl  = document.getElementById("servoValue");
+    const updatedEl = document.getElementById("updatedText");
+
+    // 🔁 AUTO REFRESH FUNCTION (Runs every 2 seconds)
+    async function refreshData() {
+      try {
+        const snap = await get(landslideRef);
+        const data = snap.val();
+
+        if (!data) {
+          stateBox.style.background = "#6b7280";
+          stateBox.textContent = "No data yet from device";
+          return;
+        }
+
+        // Update UI
+        soilEl.textContent   = data.soil ?? "--";
+        tilt1El.textContent  = data.tilt1 ?? "--";
+        tilt2El.textContent  = data.tilt2 ?? "--";
+        vibEl.textContent    = data.vibration ?? "--";
+        rainEl.textContent   = data.rain ? "Raining 🌧️" : "No Rain ☀️";
+        servoEl.textContent  = (data.servo !== undefined) ? data.servo + "°" : "--";
+
+        // System state UI
+        if (data.state === "SAFE") {
+          stateBox.style.background = "#16a34a";
+        } else if (data.state === "WARNING") {
+          stateBox.style.background = "#f97316";
+        } else if (data.state === "DANGER") {
+          stateBox.style.background = "#dc2626";
+        } else {
+          stateBox.style.background = "#6b7280";
+        }
+        stateBox.textContent = "System State: " + data.state;
+
+        // Update timestamp
+        if (data.lastUpdate) {
+          updatedEl.textContent = "Last update: " + new Date(data.lastUpdate * 1000).toLocaleString();
+        }
+      } catch (err) {
+        console.error(err);
+        stateBox.style.background = "#6b7280";
+        stateBox.textContent = "Firebase Read Error";
+        updatedEl.textContent = err.message;
+      }
+    }
+
+    // 🔁 Call every 2 seconds
+    setInterval(refreshData, 2000);
+
+    // Run once at start
+    refreshData();
+  </script>
+</body>
+</html>
