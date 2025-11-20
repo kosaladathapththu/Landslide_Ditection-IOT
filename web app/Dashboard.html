@@ -1,0 +1,690 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Department Landslide Control Dashboard</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+      color: #fff;
+      min-height: 100vh;
+      padding: 20px;
+    }
+    .header {
+      text-align: center;
+      margin-bottom: 30px;
+      padding: 20px;
+      background: rgba(255,255,255,0.05);
+      border-radius: 15px;
+      backdrop-filter: blur(10px);
+    }
+    .header h1 {
+      font-size: 32px;
+      margin-bottom: 10px;
+      text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+    }
+    .header p {
+      color: #94a3b8;
+      font-size: 14px;
+    }
+    .main-grid {
+      display: grid;
+      grid-template-columns: 2fr 1fr;
+      gap: 20px;
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+    .left-panel {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+    .status-card {
+      background: rgba(255,255,255,0.08);
+      border-radius: 15px;
+      padding: 30px;
+      text-align: center;
+      backdrop-filter: blur(10px);
+      border: 2px solid rgba(255,255,255,0.1);
+      transition: all 0.3s ease;
+    }
+    .status-card.safe {
+      border-color: #22c55e;
+      box-shadow: 0 0 30px rgba(34, 197, 94, 0.3);
+    }
+    .status-card.warning {
+      border-color: #f59e0b;
+      box-shadow: 0 0 30px rgba(245, 158, 11, 0.3);
+    }
+    .status-card.danger {
+      border-color: #ef4444;
+      box-shadow: 0 0 30px rgba(239, 68, 68, 0.3);
+      animation: pulse 2s infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.7; }
+    }
+    .status-card h2 {
+      font-size: 48px;
+      margin-bottom: 10px;
+    }
+    .status-card p {
+      font-size: 18px;
+      color: #cbd5e1;
+    }
+    .sensors-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 15px;
+    }
+    .sensor-card {
+      background: rgba(255,255,255,0.08);
+      border-radius: 12px;
+      padding: 20px;
+      border: 1px solid rgba(255,255,255,0.1);
+    }
+    .sensor-card .label {
+      color: #94a3b8;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 8px;
+    }
+    .sensor-card .value {
+      font-size: 28px;
+      font-weight: bold;
+      color: #fff;
+    }
+    .control-panel {
+      background: rgba(255,255,255,0.08);
+      border-radius: 15px;
+      padding: 25px;
+      border: 1px solid rgba(255,255,255,0.1);
+    }
+    .control-panel h3 {
+      margin-bottom: 20px;
+      font-size: 20px;
+      border-bottom: 2px solid rgba(255,255,255,0.2);
+      padding-bottom: 10px;
+    }
+    .control-item {
+      margin-bottom: 20px;
+      padding: 15px;
+      background: rgba(0,0,0,0.2);
+      border-radius: 10px;
+    }
+    .control-item label {
+      display: block;
+      margin-bottom: 10px;
+      color: #cbd5e1;
+      font-size: 14px;
+    }
+    .control-buttons {
+      display: flex;
+      gap: 10px;
+    }
+    .btn {
+      flex: 1;
+      padding: 12px 20px;
+      border: none;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: bold;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .btn-on {
+      background: #22c55e;
+      color: white;
+    }
+    .btn-on:hover {
+      background: #16a34a;
+      transform: translateY(-2px);
+      box-shadow: 0 5px 15px rgba(34, 197, 94, 0.4);
+    }
+    .btn-off {
+      background: #64748b;
+      color: white;
+    }
+    .btn-off:hover {
+      background: #475569;
+    }
+    .btn-on.active {
+      box-shadow: 0 0 20px rgba(34, 197, 94, 0.6);
+      animation: glow 1.5s infinite;
+    }
+    @keyframes glow {
+      0%, 100% { box-shadow: 0 0 20px rgba(34, 197, 94, 0.6); }
+      50% { box-shadow: 0 0 30px rgba(34, 197, 94, 0.9); }
+    }
+    .simulation-panel {
+      background: rgba(255,255,255,0.08);
+      border-radius: 15px;
+      padding: 25px;
+      border: 1px solid rgba(255,255,255,0.1);
+      margin-top: 20px;
+    }
+    .simulation-panel h3 {
+      margin-bottom: 20px;
+      color: #fbbf24;
+      font-size: 18px;
+    }
+    .sim-btn {
+      width: 100%;
+      padding: 15px;
+      margin-bottom: 10px;
+      border: none;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: bold;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+    .sim-btn.rain {
+      background: #3b82f6;
+      color: white;
+    }
+    .sim-btn.rain:hover {
+      background: #2563eb;
+      transform: translateY(-2px);
+    }
+    .sim-btn.earthquake {
+      background: #ef4444;
+      color: white;
+    }
+    .sim-btn.earthquake:hover {
+      background: #dc2626;
+      transform: translateY(-2px);
+    }
+    .sim-btn.reset {
+      background: #64748b;
+      color: white;
+    }
+    .sim-btn.reset:hover {
+      background: #475569;
+    }
+    .alert-box {
+      background: rgba(239, 68, 68, 0.2);
+      border: 2px solid #ef4444;
+      border-radius: 10px;
+      padding: 15px;
+      margin-top: 20px;
+      display: none;
+    }
+    .alert-box.show {
+      display: block;
+      animation: slideIn 0.5s ease;
+    }
+    @keyframes slideIn {
+      from { transform: translateX(-100%); opacity: 0; }
+      to { transform: translateX(0); opacity: 1; }
+    }
+    .alert-box h4 {
+      color: #fca5a5;
+      margin-bottom: 10px;
+      font-size: 16px;
+    }
+    .alert-box p {
+      color: #cbd5e1;
+      font-size: 14px;
+      line-height: 1.6;
+    }
+    .timestamp {
+      text-align: center;
+      color: #64748b;
+      font-size: 12px;
+      margin-top: 20px;
+    }
+    .status-indicator {
+      display: inline-block;
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      margin-left: 8px;
+      animation: blink 1s infinite;
+    }
+    @keyframes blink {
+      0%, 50%, 100% { opacity: 1; }
+      25%, 75% { opacity: 0.3; }
+    }
+    @media (max-width: 968px) {
+      .main-grid {
+        grid-template-columns: 1fr;
+      }
+      .sensors-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>🏔️ DEPARTMENT LANDSLIDE MONITORING & CONTROL</h1>
+    <p>Real-time Hazard Detection & Emergency Response System</p>
+  </div>
+
+  <div class="main-grid">
+    <div class="left-panel">
+      <!-- System Status -->
+      <div class="status-card" id="statusCard">
+        <h2 id="statusText">SAFE</h2>
+        <p>All parameters within normal range</p>
+      </div>
+
+      <!-- Sensor Readings -->
+      <div class="sensors-grid">
+        <div class="sensor-card">
+          <div class="label">Soil Moisture</div>
+          <div class="value" id="soilValue">--</div>
+        </div>
+        <div class="sensor-card">
+          <div class="label">Tilt Sensor 1</div>
+          <div class="value" id="tilt1Value">--</div>
+        </div>
+        <div class="sensor-card">
+          <div class="label">Tilt Sensor 2</div>
+          <div class="value" id="tilt2Value">--</div>
+        </div>
+        <div class="sensor-card">
+          <div class="label">Vibration</div>
+          <div class="value" id="vibValue">--</div>
+        </div>
+        <div class="sensor-card">
+          <div class="label">Rainfall</div>
+          <div class="value" id="rainValue">--</div>
+        </div>
+        <div class="sensor-card">
+          <div class="label">Seismic Activity</div>
+          <div class="value" id="seismicValue">--</div>
+        </div>
+      </div>
+
+      <!-- Alert Box -->
+      <div class="alert-box" id="alertBox">
+        <h4>⚠️ EMERGENCY ALERT</h4>
+        <p id="alertText">System operating normally</p>
+      </div>
+    </div>
+
+    <!-- Control Panel -->
+    <div>
+      <div class="control-panel">
+        <h3>🎛️ MANUAL CONTROLS</h3>
+        
+        <div class="control-item">
+          <label>Warning Buzzer <span class="status-indicator" id="buzzerIndicator" style="background: #64748b;"></span></label>
+          <div class="control-buttons">
+            <button class="btn btn-on" id="buzzerOn">ON</button>
+            <button class="btn btn-off" id="buzzerOff">OFF</button>
+          </div>
+        </div>
+
+        <div class="control-item">
+          <label>Emergency Lights <span class="status-indicator" id="lightsIndicator" style="background: #64748b;"></span></label>
+          <div class="control-buttons">
+            <button class="btn btn-on" id="lightsOn">ON</button>
+            <button class="btn btn-off" id="lightsOff">OFF</button>
+          </div>
+        </div>
+
+        <div class="control-item">
+          <label>Road Barrier <span class="status-indicator" id="barrierIndicator" style="background: #64748b;"></span></label>
+          <div class="control-buttons">
+            <button class="btn btn-on" id="barrierClose">CLOSE</button>
+            <button class="btn btn-off" id="barrierOpen">OPEN</button>
+          </div>
+        </div>
+
+        <div class="control-item">
+          <label>Siren System <span class="status-indicator" id="sirenIndicator" style="background: #64748b;"></span></label>
+          <div class="control-buttons">
+            <button class="btn btn-on" id="sirenOn">ON</button>
+            <button class="btn btn-off" id="sirenOff">OFF</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Simulation Panel -->
+      <div class="simulation-panel">
+        <h3>⚡ SIMULATION CONTROLS</h3>
+        <button class="sim-btn rain" id="simulateRain">🌧️ Simulate Heavy Rain</button>
+        <button class="sim-btn earthquake" id="simulateEarthquake">🌍 Simulate Earthquake</button>
+        <button class="sim-btn reset" id="resetSim">🔄 Reset to Normal</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="timestamp" id="timestamp">
+    Last Update: --
+  </div>
+
+  <!-- 🔥 Firebase + Control Logic -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
+    import { getDatabase, ref, onValue, update } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-database.js";
+
+    // ✅ Your Firebase config
+    const firebaseConfig = {
+      apiKey: "AIzaSyCrUFSVab6xJkxE95LjMUm9w_xiq2m89L0",
+      authDomain: "landslide-detection-50870.firebaseapp.com",
+      projectId: "landslide-detection-50870",
+      storageBucket: "landslide-detection-50870.firebasestorage.app",
+      messagingSenderId: "710587722180",
+      appId: "1:710587722180:web:c9fa92c9d31cb54f329c91",
+      databaseURL: "https://landslide-detection-50870-default-rtdb.asia-southeast1.firebasedatabase.app/"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+    // we use root ( / ) because your data is at the top level
+    const rootRef = ref(db, "/");
+
+    // ----- Local system state -----
+    let systemState = {
+      status: "SAFE",
+      soil: 0,
+      tilt1: 0,
+      tilt2: 0,
+      vibration: 0,
+      rain: false,
+      seismic: "Normal",
+      buzzer: false,
+      lights: false,
+      barrier: false,
+      siren: false,
+      roadClosed: false
+    };
+
+    // ----- DOM elements -----
+    const statusCard = document.getElementById("statusCard");
+    const statusText = document.getElementById("statusText");
+    const soilValue = document.getElementById("soilValue");
+    const tilt1Value = document.getElementById("tilt1Value");
+    const tilt2Value = document.getElementById("tilt2Value");
+    const vibValue = document.getElementById("vibValue");
+    const rainValue = document.getElementById("rainValue");
+    const seismicValue = document.getElementById("seismicValue");
+    const alertBox = document.getElementById("alertBox");
+    const alertText = document.getElementById("alertText");
+    const timestamp = document.getElementById("timestamp");
+
+    const buzzerIndicator = document.getElementById("buzzerIndicator");
+    const lightsIndicator = document.getElementById("lightsIndicator");
+    const barrierIndicator = document.getElementById("barrierIndicator");
+    const sirenIndicator = document.getElementById("sirenIndicator");
+
+    // Helper: update indicator color
+    function updateIndicator(indicator, active) {
+      indicator.style.background = active ? "#22c55e" : "#64748b";
+    }
+
+    // ----- PUSH to Firebase (controls + sensors) -----
+    function pushToFirebase(partial) {
+      const payload = {
+        ...partial,
+        lastUpdate: Math.floor(Date.now() / 1000),
+        State: systemState.status   // keep State field in DB
+      };
+      update(rootRef, payload).catch(err => console.error("Firebase update error:", err));
+    }
+
+    // ----- UPDATE UI -----
+    function updateDisplay() {
+      // Sensor values
+      soilValue.textContent = systemState.soil + "%";
+      tilt1Value.textContent = systemState.tilt1 + "°";
+      tilt2Value.textContent = systemState.tilt2 + "°";
+
+      // Vibration label (if numeric, convert to Low/Med/High)
+      let vibLabel;
+      if (typeof systemState.vibration === "number") {
+        if (systemState.vibration < 0.4) vibLabel = "Low";
+        else if (systemState.vibration < 0.8) vibLabel = "Medium";
+        else vibLabel = "High";
+      } else {
+        vibLabel = systemState.vibration;
+      }
+      vibValue.textContent = vibLabel;
+
+      rainValue.textContent = systemState.rain ? "Heavy Rain 🌧️" : "No Rain ☀️";
+      seismicValue.textContent = systemState.seismic;
+
+      // Status card
+      statusCard.className = "status-card " + systemState.status.toLowerCase();
+      statusText.textContent = systemState.status;
+
+      const descriptions = {
+        SAFE: "All parameters within normal range",
+        WARNING: "Elevated risk detected - monitoring closely",
+        DANGER: "CRITICAL LANDSLIDE RISK - IMMEDIATE ACTION REQUIRED"
+      };
+      statusCard.querySelector("p").textContent =
+        descriptions[systemState.status] || "Status unknown";
+
+      // Alert box
+      if (systemState.status === "DANGER") {
+        alertBox.classList.add("show");
+        const alerts = [];
+        if (systemState.soil > 70) alerts.push("Critical soil moisture level");
+        if (systemState.tilt1 > 20 || systemState.tilt2 > 20)
+          alerts.push("Dangerous ground tilt detected");
+        if (vibLabel === "High") alerts.push("High seismic activity");
+        if (systemState.roadClosed) alerts.push("ROAD CLOSED - Emergency protocol active");
+        alertText.textContent = alerts.join(" • ");
+      } else {
+        alertBox.classList.remove("show");
+      }
+
+      timestamp.textContent = "Last Update: " + new Date().toLocaleString();
+
+      // Indicators
+      updateIndicator(buzzerIndicator, systemState.buzzer);
+      updateIndicator(lightsIndicator, systemState.lights);
+      updateIndicator(barrierIndicator, systemState.barrier);
+      updateIndicator(sirenIndicator, systemState.siren);
+    }
+
+    // ----- READ from Firebase (sensors + controls) -----
+    onValue(rootRef, (snap) => {
+      const data = snap.val() || {};
+
+      systemState.status = data.State || data.state || "SAFE";
+      systemState.soil = data.soil ?? 0;
+      systemState.tilt1 = data.tilt1 ?? 0;
+      systemState.tilt2 = data.tilt2 ?? 0;
+      systemState.vibration = data.vibration ?? 0;
+      systemState.rain = !!data.rain;
+      systemState.seismic = data.seismic || "Normal";
+
+      systemState.buzzer = !!data.buzzer;
+      systemState.lights = !!data.lights;
+      systemState.barrier = !!data.barrier;
+      systemState.siren = !!data.siren;
+      systemState.roadClosed = !!data.roadClosed;
+
+      updateDisplay();
+    });
+
+    // ----- Manual control handlers (write -> Firebase) -----
+    document.getElementById("buzzerOn").addEventListener("click", () => {
+      systemState.buzzer = true;
+      document.getElementById("buzzerOn").classList.add("active");
+      pushToFirebase({ buzzer: true });
+      updateDisplay();
+    });
+
+    document.getElementById("buzzerOff").addEventListener("click", () => {
+      systemState.buzzer = false;
+      document.getElementById("buzzerOn").classList.remove("active");
+      pushToFirebase({ buzzer: false });
+      updateDisplay();
+    });
+
+    document.getElementById("lightsOn").addEventListener("click", () => {
+      systemState.lights = true;
+      document.getElementById("lightsOn").classList.add("active");
+      pushToFirebase({ lights: true });
+      updateDisplay();
+    });
+
+    document.getElementById("lightsOff").addEventListener("click", () => {
+      systemState.lights = false;
+      document.getElementById("lightsOn").classList.remove("active");
+      pushToFirebase({ lights: false });
+      updateDisplay();
+    });
+
+    document.getElementById("barrierClose").addEventListener("click", () => {
+      systemState.barrier = true;
+      systemState.roadClosed = true;
+      document.getElementById("barrierClose").classList.add("active");
+      pushToFirebase({ barrier: true, roadClosed: true });
+      updateDisplay();
+    });
+
+    document.getElementById("barrierOpen").addEventListener("click", () => {
+      systemState.barrier = false;
+      systemState.roadClosed = false;
+      document.getElementById("barrierClose").classList.remove("active");
+      pushToFirebase({ barrier: false, roadClosed: false });
+      updateDisplay();
+    });
+
+    document.getElementById("sirenOn").addEventListener("click", () => {
+      systemState.siren = true;
+      document.getElementById("sirenOn").classList.add("active");
+      pushToFirebase({ siren: true });
+      updateDisplay();
+    });
+
+    document.getElementById("sirenOff").addEventListener("click", () => {
+      systemState.siren = false;
+      document.getElementById("sirenOn").classList.remove("active");
+      pushToFirebase({ siren: false });
+      updateDisplay();
+    });
+
+    // ----- Simulation buttons (also write to Firebase) -----
+    document.getElementById("simulateRain").addEventListener("click", () => {
+      systemState.status = "DANGER";
+      systemState.rain = true;
+      systemState.soil = 85;
+      systemState.vibration = 0.7;
+      systemState.seismic = "Rain Storm";
+
+      systemState.buzzer = true;
+      systemState.lights = true;
+      systemState.barrier = true;
+      systemState.siren = true;
+      systemState.roadClosed = true;
+
+      document.getElementById("buzzerOn").classList.add("active");
+      document.getElementById("lightsOn").classList.add("active");
+      document.getElementById("barrierClose").classList.add("active");
+      document.getElementById("sirenOn").classList.add("active");
+
+      pushToFirebase({
+        State: "DANGER",
+        rain: true,
+        soil: systemState.soil,
+        vibration: systemState.vibration,
+        seismic: systemState.seismic,
+        buzzer: true,
+        lights: true,
+        barrier: true,
+        siren: true,
+        roadClosed: true
+      });
+
+      updateDisplay();
+    });
+
+    document.getElementById("simulateEarthquake").addEventListener("click", () => {
+      systemState.status = "DANGER";
+      systemState.seismic = "ALERT";
+      systemState.vibration = 1.2;
+      systemState.tilt1 = 25;
+      systemState.tilt2 = 28;
+
+      systemState.buzzer = true;
+      systemState.lights = true;
+      systemState.barrier = true;
+      systemState.siren = true;
+      systemState.roadClosed = true;
+
+      document.getElementById("buzzerOn").classList.add("active");
+      document.getElementById("lightsOn").classList.add("active");
+      document.getElementById("barrierClose").classList.add("active");
+      document.getElementById("sirenOn").classList.add("active");
+
+      pushToFirebase({
+        State: "DANGER",
+        seismic: systemState.seismic,
+        vibration: systemState.vibration,
+        tilt1: systemState.tilt1,
+        tilt2: systemState.tilt2,
+        buzzer: true,
+        lights: true,
+        barrier: true,
+        siren: true,
+        roadClosed: true
+      });
+
+      updateDisplay();
+    });
+
+    document.getElementById("resetSim").addEventListener("click", () => {
+      systemState = {
+        status: "SAFE",
+        soil: 45,
+        tilt1: 2,
+        tilt2: 3,
+        vibration: 0.2,
+        rain: false,
+        seismic: "Normal",
+        buzzer: false,
+        lights: false,
+        barrier: false,
+        siren: false,
+        roadClosed: false
+      };
+
+      document.getElementById("buzzerOn").classList.remove("active");
+      document.getElementById("lightsOn").classList.remove("active");
+      document.getElementById("barrierClose").classList.remove("active");
+      document.getElementById("sirenOn").classList.remove("active");
+
+      pushToFirebase({
+        State: "SAFE",
+        rain: false,
+        soil: systemState.soil,
+        tilt1: systemState.tilt1,
+        tilt2: systemState.tilt2,
+        vibration: systemState.vibration,
+        seismic: systemState.seismic,
+        buzzer: false,
+        lights: false,
+        barrier: false,
+        siren: false,
+        roadClosed: false
+      });
+
+      updateDisplay();
+    });
+
+    // Update timestamp every second (UI only)
+    setInterval(() => {
+      timestamp.textContent = "Last Update: " + new Date().toLocaleString();
+    }, 1000);
+  </script>
+</body>
+</html>
