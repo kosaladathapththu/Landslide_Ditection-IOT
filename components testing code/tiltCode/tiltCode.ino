@@ -10,6 +10,19 @@ const float lowTiltAngle  = 10.0;
 const float midTiltAngle  = 20.0;
 const float highTiltAngle = 180.0;
 
+// Raw accelerometer values
+short int axisX, axisY, axisZ;
+
+// G-force values
+float xAxisGforce, yAxisGforce, zAxisGforce;
+const float gForce = 16384.0;  // 1g = 16384 for MPU6050 (±2g range)
+
+// Angles
+float roll, pitch;
+
+void setup() {
+  Serial.begin(9600);
+
   // For NodeMCU: SDA = D2, SCL = D1
   Wire.begin(D2, D1);
   // (Optional) faster I2C:
