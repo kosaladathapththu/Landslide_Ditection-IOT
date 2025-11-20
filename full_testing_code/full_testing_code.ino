@@ -1,6 +1,6 @@
 // ----- Pin Setup -----
 int moisturePin = 34;      // Analog pin for soil moisture
-int tiltPin = 27;          // Digital input for tilt
+int tiltPin = 26;          // Digital input for tilt
 int vibPin = 26;           // Digital input for vibration
 
 int warnLED = 14;          // Yellow LED
