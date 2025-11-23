@@ -21,6 +21,11 @@ float vibThresholdLow = 50; // adjust
 float vibThresholdMid = 150;
 float vibThresholdHigh = 300;
 
+// RAW readings (from MPU sensors)
+int16_t rawAx[3], rawAy[3], rawAz[3];
+
+
+
 void setup() {
   Serial.begin(9600);
   Wire.begin();
@@ -35,10 +40,13 @@ void loop() {
   // Read MPU6050
   MPU6050* mpus[3] = {&mpu1,&mpu2,&mpu3};
   for(int i=0;i<3;i++){
-    mpus[i]->getAcceleration(&ax[i], &ay[i], &az[i]);
-    pitch[i] = atan2(ax[i], sqrt(ay[i]*ay[i]+az[i]*az[i]))*180.0/PI;
-    vibration[i] = abs(pitch[i]-prevPitch[i]);
-    prevPitch[i]=pitch[i];
+    mpus[i]->getAcceleration(&rawAx[i], &rawAy[i], &rawAz[i]);
+
+// Convert to 'g' (gravity units)
+ax[i] = rawAx[i] / 16384.0;
+ay[i] = rawAy[i] / 16384.0;
+az[i] = rawAz[i] / 16384.0;
+
   }
 
   // Soil moisture
