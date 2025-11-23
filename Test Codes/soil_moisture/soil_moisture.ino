@@ -1,11 +1,14 @@
 #include <ESP8266WiFi.h>
+#include <SoftwareSerial.h>
 #include <Firebase_ESP_Client.h>
+#include <addons/TokenHelper.h>
+#include <addons/RTDBHelper.h>
 
-// -------- WiFi ----------
+// ---------------- WiFi ----------------
 #define WIFI_SSID "ZTE Blade V50 Design"
 #define WIFI_PASSWORD "imaadh0234897651"
 
-// -------- Firebase ----------
+// ---------------- Firebase -------------
 #define API_KEY "AIzaSyCSEWW0wawOzJgvxyOmDqXMqE8nihprCd0"
 #define DATABASE_URL "https://iot-project-3c897-default-rtdb.asia-southeast1.firebasedatabase.app"
 #define FIREBASE_EMAIL "rushdeeimaadh@gmail.com"
@@ -16,66 +19,53 @@ FirebaseAuth auth;
 FirebaseConfig config;
 FirebaseJson json;
 
-// -------- Soil Moisture ----------
-#define SOIL_A_PIN A0  // analog pin for soil sensor
+// ---------------- Arduino Serial to ESP -----
+SoftwareSerial arduinoSerial(D7, D8); 
+// RX = D7 (GPIO13), TX = D8 (GPIO15)
 
-// -------- Risk thresholds ----------
-int soilVeryLow = 20;   // %
-int soilModerate = 40;  // %
-int soilHigh = 60;      // %
-int soilCritical = 61;  // anything above 60%
-
-// -------- Functions ----------
-int readSoilPercent() {
-  int soilRaw = analogRead(SOIL_A_PIN);         // 0 = wet, 1023 = dry
-  int soilPercent = map(soilRaw, 1023, 0, 0, 100); // Convert to 0-100%
-  return soilPercent;
-}
-
-String calculateSoilRisk(int soilPercent) {
-  if (soilPercent < soilVeryLow) return "Very Low Risk";
-  else if (soilPercent < soilModerate) return "Moderate";
-  else if (soilPercent < soilHigh) return "High";
+String riskLevel(int v) {
+  if (v < 20) return "Very Low Risk";
+  else if (v < 40) return "Moderate";
+  else if (v < 60) return "High";
   else return "Critical";
 }
 
-// -------- Setup ----------
 void setup() {
-  Serial.begin(9600);
+  Serial.begin(9600);           // Monitor
+  arduinoSerial.begin(9600);    // Arduino communication
 
-  // WiFi
-  Serial.print("Connecting WiFi...");
+  Serial.println("Connecting WiFi...");
   WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
   while (WiFi.status() != WL_CONNECTED) { delay(300); Serial.print("."); }
-  Serial.println("WiFi connected!");
+  Serial.println("\nWiFi Connected!");
 
-  // Firebase
   config.api_key = API_KEY;
   config.database_url = DATABASE_URL;
   auth.user.email = FIREBASE_EMAIL;
   auth.user.password = FIREBASE_PASSWORD;
   Firebase.begin(&config, &auth);
   Firebase.reconnectWiFi(true);
+
   Serial.println("Firebase Ready!");
 }
 
-// -------- Loop ----------
 void loop() {
-  int soilPercent = readSoilPercent();
-  String soilRisk = calculateSoilRisk(soilPercent);
+  if (arduinoSerial.available()) {
+    int soil = arduinoSerial.parseInt();
 
-  // Serial output
-  Serial.printf("Soil Moisture: %d%%, Risk: %s\n", soilPercent, soilRisk.c_str());
+    if (soil > 0 && soil <= 100) {
+      String risk = riskLevel(soil);
 
-  // Firebase upload
-  json.clear();
-  json.set("soilPercent", soilPercent);
-  json.set("soilRisk", soilRisk);
+      Serial.printf("Soil: %d%%  Risk: %s\n", soil, risk.c_str());
 
-  if (Firebase.RTDB.setJSON(&fbdo, "/Landslide/Device1/SoilData", &json))
-    Serial.println("Firebase Upload OK");
-  else
-    Serial.println("Firebase error: " + fbdo.errorReason());
+      json.clear();
+      json.set("soilPercent", soil);
+      json.set("soilRisk", risk);
 
-  delay(2000); // update every 2 seconds
+      if (Firebase.RTDB.setJSON(&fbdo, "/Landslide/Device1/SoilData", &json))
+        Serial.println("Uploaded to Firebase!");
+      else
+        Serial.println("Firebase Error: " + fbdo.errorReason());
+    }
+  }
 }

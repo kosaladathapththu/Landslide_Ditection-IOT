@@ -179,7 +179,7 @@ String calculateVibrationRisk(float vib) {
 
 int readSoilPercent() {
   int soilRaw = analogRead(soil_pin);         
-  int soilPercent = map(soilRaw, 1023, 0, 0, 100);
+  int soilPercent = map(soilRaw, 1023, 0, 0, 100); 
   return soilPercent;
 }
 
