@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -43,7 +42,6 @@
     body {
       font-family: 'Inter', sans-serif;
       background-color: var(--bg-app);
-      /* Subtle noise texture for premium feel */
       background-image: 
         radial-gradient(at 0% 0%, rgba(59, 130, 246, 0.15) 0px, transparent 50%),
         radial-gradient(at 100% 100%, rgba(16, 185, 129, 0.05) 0px, transparent 50%);
@@ -222,7 +220,7 @@
       border: 1px solid rgba(239, 68, 68, 0.3);
       border-radius: var(--radius-md);
       padding: 24px;
-      display: none; /* Controlled by JS */
+      display: none;
       animation: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1);
     }
     
@@ -317,13 +315,11 @@
 
     .btn:hover { color: var(--text-primary); }
 
-    /* Active States for Logic */
     .btn-on.active {
       background: var(--color-safe);
-      color: #000; /* Black text for contrast on green */
+      color: #000;
       box-shadow: 0 2px 10px rgba(16, 185, 129, 0.2);
     }
-    /* Special case for Close/Open active logic */
     #barrierClose.active {
       background: var(--color-warning); 
       color: #000;
@@ -391,7 +387,6 @@
   <div class="header">
     <div class="header-branding">
       <h1>
-        <!-- SVG Icon -->
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.54 15H17a2 2 0 0 0-2 2v4.54"/><path d="M7 3.34V5a3 3 0 0 0 3 3a2 2 0 0 1 2 2c0 1.1.9 2 2 2a2 2 0 0 0 2-2c0-1.1.9-2 2-2h3.17"/><path d="M11 21.95V18a2 2 0 0 0-2-2a2 2 0 0 1-2-2v-1a2 2 0 0 0-2-2H2.05"/><circle cx="12" cy="12" r="10"/></svg>
         LANDSLIDE MONITORING CENTER
       </h1>
@@ -534,25 +529,29 @@
     </div>
   </div>
 
-  <!-- LOGIC UNCHANGED -->
+  <!-- JS: Firebase + Logic -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
     import { getDatabase, ref, onValue, update } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-database.js";
 
-    // ✅ Your Firebase config
+    // ✅ Your Firebase config (given by you)
     const firebaseConfig = {
-      apiKey: "AIzaSyCrUFSVab6xJkxE95LjMUm9w_xiq2m89L0",
-      authDomain: "landslide-detection-50870.firebaseapp.com",
-      projectId: "landslide-detection-50870",
-      storageBucket: "landslide-detection-50870.firebasestorage.app",
-      messagingSenderId: "710587722180",
-      appId: "1:710587722180:web:c9fa92c9d31cb54f329c91",
-      databaseURL: "https://landslide-detection-50870-default-rtdb.asia-southeast1.firebasedatabase.app/"
+      apiKey: "AIzaSyCSEWW0wawOzJgvxyOmDqXMqE8nihprCd0",
+      authDomain: "iot-project-3c897.firebaseapp.com",
+      databaseURL: "https://iot-project-3c897-default-rtdb.asia-southeast1.firebasedatabase.app",
+      projectId: "iot-project-3c897",
+      storageBucket: "iot-project-3c897.firebasestorage.app",
+      messagingSenderId: "876143785284",
+      appId: "1:876143785284:web:3435ff5210b9ea92475311",
+      measurementId: "G-X44B4KWT65"
     };
 
     const app = initializeApp(firebaseConfig);
     const db = getDatabase(app);
-    const rootRef = ref(db, "/");
+
+    // 🔗 Use the same path you see in Firebase:
+    // Landslide -> Device1 -> (SoilData, RainSensor, MPUData, etc.)
+    const rootRef = ref(db, "Landslide/Device1");
 
     // ----- Local system state -----
     let systemState = {
@@ -590,14 +589,13 @@
 
     // Helper: update indicator color
     function updateIndicator(indicator, active) {
-      // Using CSS variables logic for indicators
       indicator.style.background = active ? "var(--color-safe)" : "var(--text-tertiary)";
-      if(indicator.id === "barrierIndicator" && active) {
-         indicator.style.background = "var(--color-warning)";
+      if (indicator.id === "barrierIndicator" && active) {
+        indicator.style.background = "var(--color-warning)";
       }
     }
 
-    // ----- PUSH to Firebase (controls + sensors) -----
+    // ----- PUSH to Firebase (controls + status) -----
     function pushToFirebase(partial) {
       const payload = {
         ...partial,
@@ -609,12 +607,10 @@
 
     // ----- UPDATE UI -----
     function updateDisplay() {
-      // Sensor values
       soilValue.textContent = systemState.soil + "%";
       tilt1Value.textContent = systemState.tilt1 + "°";
       tilt2Value.textContent = systemState.tilt2 + "°";
 
-      // Vibration label
       let vibLabel;
       if (typeof systemState.vibration === "number") {
         if (systemState.vibration < 0.4) vibLabel = "Low";
@@ -628,11 +624,8 @@
       rainValue.textContent = systemState.rain ? "Heavy Rain" : "Dry";
       seismicValue.textContent = systemState.seismic;
 
-      // Status card styling
-      // Reset classes first
       statusCard.classList.remove("safe", "warning", "danger");
       statusCard.classList.add(systemState.status.toLowerCase());
-      
       statusText.textContent = systemState.status;
 
       const descriptions = {
@@ -643,7 +636,6 @@
       statusCard.querySelector("p").textContent =
         descriptions[systemState.status] || "Status unknown";
 
-      // Alert box
       if (systemState.status === "DANGER") {
         alertBox.classList.add("show");
         const alerts = [];
@@ -657,13 +649,11 @@
         alertBox.classList.remove("show");
       }
 
-      // Indicators
       updateIndicator(buzzerIndicator, systemState.buzzer);
       updateIndicator(lightsIndicator, systemState.lights);
       updateIndicator(barrierIndicator, systemState.barrier);
       updateIndicator(sirenIndicator, systemState.siren);
 
-      // Update visual state of buttons (UI only to match logic)
       toggleBtnVisuals("buzzer", systemState.buzzer);
       toggleBtnVisuals("lights", systemState.lights);
       toggleBtnVisuals("barrier", systemState.barrier);
@@ -671,38 +661,71 @@
     }
 
     function toggleBtnVisuals(type, isActive) {
-       // Logic requires 'active' class on the ON button when active, OFF button otherwise?
-       // The original code toggles 'active' on the specific button clicked.
-       // We replicate that visual feedback here.
-       const btnOn = document.getElementById(type + (type === "barrier" ? "Close" : "On"));
-       const btnOff = document.getElementById(type + (type === "barrier" ? "Open" : "Off"));
-       
-       if(isActive) {
-         btnOn.classList.add("active");
-         btnOff.classList.remove("active");
-       } else {
-         btnOn.classList.remove("active");
-         btnOff.classList.add("active"); // Optional: highlight "Off" state if desired, or just remove active from On
-       }
+      const btnOn = document.getElementById(
+        type + (type === "barrier" ? "Close" : "On")
+      );
+      const btnOff = document.getElementById(
+        type + (type === "barrier" ? "Open" : "Off")
+      );
+      if (!btnOn || !btnOff) return;
+
+      if (isActive) {
+        btnOn.classList.add("active");
+        btnOff.classList.remove("active");
+      } else {
+        btnOn.classList.remove("active");
+        btnOff.classList.add("active");
+      }
     }
 
     // ----- READ from Firebase (sensors + controls) -----
     onValue(rootRef, (snap) => {
-      const data = snap.val() || {};
+      const device = snap.val() || {};
 
-      systemState.status = data.State || data.state || "SAFE";
-      systemState.soil = data.soil ?? 0;
-      systemState.tilt1 = data.tilt1 ?? 0;
-      systemState.tilt2 = data.tilt2 ?? 0;
-      systemState.vibration = data.vibration ?? 0;
-      systemState.rain = !!data.rain;
-      systemState.seismic = data.seismic || "Normal";
+      const soilData   = device.SoilData       || {};
+      const rainData   = device.RainSensor     || {};
+      const mpuData    = device.MPUData        || {};
+      const accelGroup = device.accelerometers || device.Accelerometers || {};
 
-      systemState.buzzer = !!data.buzzer;
-      systemState.lights = !!data.lights;
-      systemState.barrier = !!data.barrier;
-      systemState.siren = !!data.siren;
-      systemState.roadClosed = !!data.roadClosed;
+      // 🌱 Soil
+      systemState.soil = soilData.soilPercent ?? 0;
+
+      // 🎚 Tilt & vibration (from MPUData)
+      systemState.tilt1 = mpuData.tilt1 ?? 0;
+      systemState.tilt2 = mpuData.tilt2 ?? 0;
+      const vib1 = mpuData.vibration1 ?? 0;
+      const vib2 = mpuData.vibration2 ?? 0;
+      systemState.vibration = Math.max(vib1, vib2);
+
+      // 🌧 Rain
+      const rainRisk = rainData.risk || "Very Low / Safe";
+      systemState.rain = (rainRisk !== "Very Low / Safe");
+
+      // Seismic (you can change this mapping)
+      systemState.seismic = mpuData.vibRisk1 || "Normal";
+
+      // Controls (written by dashboard or NodeMCU)
+      systemState.buzzer     = !!device.buzzer;
+      systemState.lights     = !!device.lights;
+      systemState.barrier    = !!device.barrier;
+      systemState.siren      = !!device.siren;
+      systemState.roadClosed = !!device.roadClosed;
+
+      // Decide global status
+      if (
+        rainRisk.includes("High") ||
+        soilData.soilRisk === "High" ||
+        systemState.vibration > 0.8
+      ) {
+        systemState.status = "DANGER";
+      } else if (
+        rainRisk.includes("Medium") ||
+        soilData.soilRisk === "Medium"
+      ) {
+        systemState.status = "WARNING";
+      } else {
+        systemState.status = "SAFE";
+      }
 
       updateDisplay();
     });
@@ -758,7 +781,7 @@
       updateDisplay();
     });
 
-    // ----- Simulation buttons -----
+    // ----- Simulation buttons (only change UI + status + DB controls) -----
     document.getElementById("simulateRain").addEventListener("click", () => {
       systemState.status = "DANGER";
       systemState.rain = true;
@@ -766,7 +789,6 @@
       systemState.vibration = 0.7;
       systemState.seismic = "Rain Storm";
 
-      // Set all alarms
       systemState.buzzer = true;
       systemState.lights = true;
       systemState.barrier = true;
@@ -774,11 +796,6 @@
       systemState.roadClosed = true;
 
       pushToFirebase({
-        State: "DANGER",
-        rain: true,
-        soil: systemState.soil,
-        vibration: systemState.vibration,
-        seismic: systemState.seismic,
         buzzer: true,
         lights: true,
         barrier: true,
@@ -802,11 +819,6 @@
       systemState.roadClosed = true;
 
       pushToFirebase({
-        State: "DANGER",
-        seismic: systemState.seismic,
-        vibration: systemState.vibration,
-        tilt1: systemState.tilt1,
-        tilt2: systemState.tilt2,
         buzzer: true,
         lights: true,
         barrier: true,
@@ -833,13 +845,6 @@
       };
 
       pushToFirebase({
-        State: "SAFE",
-        rain: false,
-        soil: systemState.soil,
-        tilt1: systemState.tilt1,
-        tilt2: systemState.tilt2,
-        vibration: systemState.vibration,
-        seismic: systemState.seismic,
         buzzer: false,
         lights: false,
         barrier: false,
@@ -857,4 +862,3 @@
   </script>
 </body>
 </html>
-```
