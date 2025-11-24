@@ -208,10 +208,11 @@
 
     .sensor-card .value {
       font-family: 'JetBrains Mono', monospace;
-      font-size: 28px;
+      font-size: 24px;
       font-weight: 500;
       color: var(--text-primary);
       margin-top: auto;
+      line-height: 1.3;
     }
 
     /* Alert Box */
@@ -423,19 +424,19 @@
           <div class="value" id="soilValue">--%</div>
         </div>
         <div class="sensor-card">
-          <div class="label">Tilt Sensor A</div>
+          <div class="label">Tilt Deep (MPU1)</div>
           <div class="value" id="tilt1Value">--°</div>
         </div>
         <div class="sensor-card">
-          <div class="label">Tilt Sensor B</div>
+          <div class="label">Tilt Middle (MPU2)</div>
           <div class="value" id="tilt2Value">--°</div>
         </div>
         <div class="sensor-card">
-          <div class="label">Vibration Index</div>
+          <div class="label">Vibration Index (3×MPU)</div>
           <div class="value" id="vibValue">--</div>
         </div>
         <div class="sensor-card">
-          <div class="label">Precipitation</div>
+          <div class="label">Precipitation (Last 1h)</div>
           <div class="value" id="rainValue">--</div>
         </div>
         <div class="sensor-card">
@@ -534,7 +535,7 @@
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
     import { getDatabase, ref, onValue, update } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-database.js";
 
-    // ✅ Your Firebase config (given by you)
+    // ✅ Your Firebase config
     const firebaseConfig = {
       apiKey: "AIzaSyCSEWW0wawOzJgvxyOmDqXMqE8nihprCd0",
       authDomain: "iot-project-3c897.firebaseapp.com",
@@ -549,19 +550,35 @@
     const app = initializeApp(firebaseConfig);
     const db = getDatabase(app);
 
-    // 🔗 Use the same path you see in Firebase:
-    // Landslide -> Device1 -> (SoilData, RainSensor, MPUData, etc.)
-    const rootRef = ref(db, "Landslide/Device1");
+    // 🔗 Match the ESP8266 paths: /sensors/...
+    const rootRef = ref(db, "sensors");
 
     // ----- Local system state -----
     let systemState = {
       status: "SAFE",
-      soil: 0,
-      tilt1: 0,
-      tilt2: 0,
-      vibration: 0,
-      rain: false,
-      seismic: "Normal",
+
+      soilPercent: 0,
+      soilLevel: "Unknown",
+
+      deepPitch: 0,
+      deepTiltLabel: "Stable",
+
+      midPitch: 0,
+      midTiltLabel: "Stable",
+
+      topPitch: 0,
+      topTiltLabel: "Stable",
+
+      vibrationDelta: 0,
+      vibrationLabel: "Low",
+
+      rainPercent: 0,
+      rainIntensity: "NoRain",
+      rainMmLastHour: 0,
+      rainRisk: "Very Low",
+
+      seismicStatus: "Normal",
+
       buzzer: false,
       lights: false,
       barrier: false,
@@ -600,30 +617,38 @@
       const payload = {
         ...partial,
         lastUpdate: Math.floor(Date.now() / 1000),
-        State: systemState.status
+        SystemStatus: systemState.status
       };
       update(rootRef, payload).catch(err => console.error("Firebase update error:", err));
     }
 
     // ----- UPDATE UI -----
     function updateDisplay() {
-      soilValue.textContent = systemState.soil + "%";
-      tilt1Value.textContent = systemState.tilt1 + "°";
-      tilt2Value.textContent = systemState.tilt2 + "°";
+      // Soil
+      soilValue.textContent =
+        systemState.soilPercent.toFixed(0) + "% (" + systemState.soilLevel + ")";
 
-      let vibLabel;
-      if (typeof systemState.vibration === "number") {
-        if (systemState.vibration < 0.4) vibLabel = "Low";
-        else if (systemState.vibration < 0.8) vibLabel = "Medium";
-        else vibLabel = "High";
-      } else {
-        vibLabel = systemState.vibration;
-      }
-      vibValue.textContent = vibLabel;
+      // Tilt – Deep (MPU1)
+      tilt1Value.textContent =
+        systemState.deepPitch.toFixed(1) + "° (" + systemState.deepTiltLabel + ")";
 
-      rainValue.textContent = systemState.rain ? "Heavy Rain" : "Dry";
-      seismicValue.textContent = systemState.seismic;
+      // Tilt – Middle (MPU2)
+      tilt2Value.textContent =
+        systemState.midPitch.toFixed(1) + "° (" + systemState.midTiltLabel + ")";
 
+      // Vibration (3×MPU)
+      vibValue.textContent =
+        systemState.vibrationDelta.toFixed(0) + " (" + systemState.vibrationLabel + ")";
+
+      // Precipitation
+      rainValue.innerHTML =
+        systemState.rainMmLastHour.toFixed(1) + " mm/h<br>" +
+        systemState.rainIntensity + " • " + systemState.rainRisk;
+
+      // Seismic
+      seismicValue.textContent = systemState.seismicStatus;
+
+      // Status card styling
       statusCard.classList.remove("safe", "warning", "danger");
       statusCard.classList.add(systemState.status.toLowerCase());
       statusText.textContent = systemState.status;
@@ -636,19 +661,25 @@
       statusCard.querySelector("p").textContent =
         descriptions[systemState.status] || "Status unknown";
 
+      // Alert box
       if (systemState.status === "DANGER") {
         alertBox.classList.add("show");
         const alerts = [];
-        if (systemState.soil > 70) alerts.push("Critical Moisture");
-        if (systemState.tilt1 > 20 || systemState.tilt2 > 20)
+        if (systemState.soilLevel.includes("Critical") || systemState.soilLevel.includes("HighSaturation"))
+          alerts.push("Critical Soil Saturation");
+        if (Math.abs(systemState.deepPitch) > 20 || Math.abs(systemState.midPitch) > 20)
           alerts.push("Ground Tilt Detected");
-        if (vibLabel === "High") alerts.push("Seismic Activity High");
+        if (systemState.vibrationLabel === "High" || systemState.vibrationLabel === "Critical")
+          alerts.push("Seismic Activity High");
+        if (systemState.rainRisk === "High" || systemState.rainRisk === "Extreme")
+          alerts.push("Heavy Rain & Precipitation");
         if (systemState.roadClosed) alerts.push("ROAD BARRIERS LOCKED");
         alertText.textContent = alerts.join(" • ");
       } else {
         alertBox.classList.remove("show");
       }
 
+      // Indicators & button states
       updateIndicator(buzzerIndicator, systemState.buzzer);
       updateIndicator(lightsIndicator, systemState.lights);
       updateIndicator(barrierIndicator, systemState.barrier);
@@ -680,47 +711,92 @@
 
     // ----- READ from Firebase (sensors + controls) -----
     onValue(rootRef, (snap) => {
-      const device = snap.val() || {};
+      const data = snap.val() || {};
 
-      const soilData   = device.SoilData       || {};
-      const rainData   = device.RainSensor     || {};
-      const mpuData    = device.MPUData        || {};
-      const accelGroup = device.accelerometers || device.Accelerometers || {};
+      const soil   = data.soil || {};
+      const rain   = data.rain || {};
+      const mpu1   = data.MPU1 || {};
+      const mpu2   = data.MPU2 || {};
+      const mpu3   = data.MPU3 || {};
 
-      // 🌱 Soil
-      systemState.soil = soilData.soilPercent ?? 0;
+      // 🌱 Soil (from ESP paths: /sensors/soil/value, level)
+      systemState.soilPercent = soil.value ?? 0;
+      systemState.soilLevel   = soil.level || "Unknown";
 
-      // 🎚 Tilt & vibration (from MPUData)
-      systemState.tilt1 = mpuData.tilt1 ?? 0;
-      systemState.tilt2 = mpuData.tilt2 ?? 0;
-      const vib1 = mpuData.vibration1 ?? 0;
-      const vib2 = mpuData.vibration2 ?? 0;
-      systemState.vibration = Math.max(vib1, vib2);
+      // 🎚 Tilt & vibration – 3 accelerometers
+      systemState.deepPitch      = mpu1.pitch ?? 0;
+      systemState.deepTiltLabel  = mpu1.tilt  || "Stable";
 
-      // 🌧 Rain
-      const rainRisk = rainData.risk || "Very Low / Safe";
-      systemState.rain = (rainRisk !== "Very Low / Safe");
+      systemState.midPitch       = mpu2.pitch ?? 0;
+      systemState.midTiltLabel   = mpu2.tilt  || "Stable";
 
-      // Seismic (you can change this mapping)
-      systemState.seismic = mpuData.vibRisk1 || "Normal";
+      systemState.topPitch       = mpu3.pitch ?? 0;
+      systemState.topTiltLabel   = mpu3.tilt  || "Stable";
 
-      // Controls (written by dashboard or NodeMCU)
-      systemState.buzzer     = !!device.buzzer;
-      systemState.lights     = !!device.lights;
-      systemState.barrier    = !!device.barrier;
-      systemState.siren      = !!device.siren;
-      systemState.roadClosed = !!device.roadClosed;
+      const d1 = mpu1.delta ?? 0;
+      const d2 = mpu2.delta ?? 0;
+      const d3 = mpu3.delta ?? 0;
+      systemState.vibrationDelta = Math.max(d1, d2, d3);
 
-      // Decide global status
-      if (
-        rainRisk.includes("High") ||
-        soilData.soilRisk === "High" ||
-        systemState.vibration > 0.8
-      ) {
+      const vibLabels = [mpu1.vib, mpu2.vib, mpu3.vib].filter(Boolean);
+      let vibLabel = "Low";
+      if (vibLabels.some(v => v.includes("SurfaceShock") || v.includes("DeepMovement"))) vibLabel = "Critical";
+      else if (vibLabels.some(v => v.includes("High")))     vibLabel = "High";
+      else if (vibLabels.some(v => v.includes("Medium")))   vibLabel = "Medium";
+      else if (vibLabels.some(v => v.includes("Low")))      vibLabel = "Low";
+      else if (vibLabels.some(v => v.includes("None")))     vibLabel = "None";
+      systemState.vibrationLabel = vibLabel;
+
+      // 🌧 Rain (from ESP /sensors/rain/value, intensity, mmLastHour, risk)
+      systemState.rainPercent    = rain.value      ?? 0;
+      systemState.rainIntensity  = rain.intensity  || "NoRain";
+      systemState.rainMmLastHour = rain.mmLastHour ?? 0;
+      systemState.rainRisk       = rain.risk       || "Very Low";
+
+      // Seismic status from vib + tilt
+      if (vibLabel === "Critical" ||
+          vibLabel === "High" ||
+          Math.abs(systemState.topPitch) > 25) {
+        systemState.seismicStatus = "CRITICAL";
+      } else if (vibLabel === "Medium" || Math.abs(systemState.topPitch) > 10) {
+        systemState.seismicStatus = "Elevated";
+      } else {
+        systemState.seismicStatus = "Normal";
+      }
+
+      // Controls (if you later write them from ESP can also read)
+      systemState.buzzer     = !!data.buzzer;
+      systemState.lights     = !!data.lights;
+      systemState.barrier    = !!data.barrier;
+      systemState.siren      = !!data.siren;
+      systemState.roadClosed = !!data.roadClosed;
+
+      // Decide global status (lab-style logic)
+      const soilCritical =
+        systemState.soilLevel.includes("Critical") ||
+        systemState.soilLevel.includes("HighSaturation");
+
+      const heavyRain =
+        systemState.rainRisk === "High" ||
+        systemState.rainRisk === "Extreme";
+
+      const strongTilt =
+        Math.abs(systemState.deepPitch) > 25 ||
+        Math.abs(systemState.midPitch)  > 25 ||
+        systemState.topTiltLabel.includes("SurfaceSlide") ||
+        systemState.topTiltLabel.includes("SlopeShift");
+
+      const strongVibration =
+        systemState.vibrationLabel === "High" ||
+        systemState.vibrationLabel === "Critical";
+
+      if (soilCritical || heavyRain || strongTilt || strongVibration) {
         systemState.status = "DANGER";
       } else if (
-        rainRisk.includes("Medium") ||
-        soilData.soilRisk === "Medium"
+        systemState.rainRisk === "Moderate" ||
+        systemState.soilLevel.includes("VeryWet") ||
+        systemState.soilLevel.includes("Wet") ||
+        systemState.vibrationLabel === "Medium"
       ) {
         systemState.status = "WARNING";
       } else {
@@ -781,13 +857,20 @@
       updateDisplay();
     });
 
-    // ----- Simulation buttons (only change UI + status + DB controls) -----
+    // ----- Simulation buttons (UI + controls only) -----
     document.getElementById("simulateRain").addEventListener("click", () => {
       systemState.status = "DANGER";
-      systemState.rain = true;
-      systemState.soil = 85;
-      systemState.vibration = 0.7;
-      systemState.seismic = "Rain Storm";
+      systemState.soilPercent = 85;
+      systemState.soilLevel = "CriticalSaturation";
+
+      systemState.rainMmLastHour = 35;
+      systemState.rainIntensity = "Heavy";
+      systemState.rainRisk = "High";
+
+      systemState.vibrationDelta = 900;
+      systemState.vibrationLabel = "High";
+
+      systemState.seismicStatus = "CRITICAL";
 
       systemState.buzzer = true;
       systemState.lights = true;
@@ -807,10 +890,22 @@
 
     document.getElementById("simulateEarthquake").addEventListener("click", () => {
       systemState.status = "DANGER";
-      systemState.seismic = "ALERT";
-      systemState.vibration = 1.2;
-      systemState.tilt1 = 25;
-      systemState.tilt2 = 28;
+
+      systemState.deepPitch = 22;
+      systemState.midPitch = 28;
+      systemState.topPitch = 30;
+      systemState.deepTiltLabel = "SlopeShift";
+      systemState.midTiltLabel = "MidSlopeShift";
+      systemState.topTiltLabel = "SurfaceSlide";
+
+      systemState.vibrationDelta = 1500;
+      systemState.vibrationLabel = "Critical";
+
+      systemState.rainMmLastHour = 5;
+      systemState.rainIntensity = "Light";
+      systemState.rainRisk = "Low";
+
+      systemState.seismicStatus = "CRITICAL";
 
       systemState.buzzer = true;
       systemState.lights = true;
@@ -831,12 +926,28 @@
     document.getElementById("resetSim").addEventListener("click", () => {
       systemState = {
         status: "SAFE",
-        soil: 45,
-        tilt1: 2,
-        tilt2: 3,
-        vibration: 0.2,
-        rain: false,
-        seismic: "Normal",
+        soilPercent: 40,
+        soilLevel: "Moist",
+
+        deepPitch: 2,
+        deepTiltLabel: "Stable",
+
+        midPitch: 3,
+        midTiltLabel: "Stable",
+
+        topPitch: 1,
+        topTiltLabel: "Stable",
+
+        vibrationDelta: 80,
+        vibrationLabel: "Low",
+
+        rainPercent: 0,
+        rainIntensity: "NoRain",
+        rainMmLastHour: 0.0,
+        rainRisk: "Very Low",
+
+        seismicStatus: "Normal",
+
         buzzer: false,
         lights: false,
         barrier: false,
