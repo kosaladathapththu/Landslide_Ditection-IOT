@@ -1,878 +1,582 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="dark">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Landslide Control Dashboard</title>
-  
-  <!-- Modern Font: Inter -->
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GeoGuard IoT | Landslide Detection</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .font-mono { font-family: 'JetBrains Mono', monospace; }
+        
+        /* Glassmorphism & Gradients */
+        .glass-panel {
+            background: rgba(24, 24, 27, 0.6);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        
+        /* Status Glows */
+        .glow-safe { box-shadow: 0 0 20px -5px rgba(16, 185, 129, 0.3); border-color: rgba(16, 185, 129, 0.4); }
+        .glow-warning { box-shadow: 0 0 20px -5px rgba(245, 158, 11, 0.3); border-color: rgba(245, 158, 11, 0.4); }
+        .glow-danger { box-shadow: 0 0 30px -5px rgba(239, 68, 68, 0.5); border-color: rgba(239, 68, 68, 0.5); }
 
-  <style>
-    :root {
-      --bg-app: #09090b; /* Zinc 950 */
-      --bg-panel: rgba(24, 24, 27, 0.6); /* Zinc 900 with opacity */
-      --border-color: rgba(255, 255, 255, 0.08);
-      --text-primary: #ffffff;
-      --text-secondary: #a1a1aa; /* Zinc 400 */
-      --text-tertiary: #71717a; /* Zinc 500 */
-      
-      --color-safe: #10b981; /* Emerald 500 */
-      --color-warning: #f59e0b; /* Amber 500 */
-      --color-danger: #ef4444; /* Red 500 */
-      --color-info: #3b82f6; /* Blue 500 */
-      
-      --radius-lg: 24px;
-      --radius-md: 16px;
-      --radius-sm: 8px;
-      
-      --shadow-glow-safe: 0 0 40px rgba(16, 185, 129, 0.15);
-      --shadow-glow-danger: 0 0 60px rgba(239, 68, 68, 0.25);
-    }
-
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-      -webkit-font-smoothing: antialiased;
-    }
-
-    body {
-      font-family: 'Inter', sans-serif;
-      background-color: var(--bg-app);
-      background-image: 
-        radial-gradient(at 0% 0%, rgba(59, 130, 246, 0.15) 0px, transparent 50%),
-        radial-gradient(at 100% 100%, rgba(16, 185, 129, 0.05) 0px, transparent 50%);
-      color: var(--text-primary);
-      min-height: 100vh;
-      padding: 40px;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-    }
-
-    /* --- Header --- */
-    .header {
-      width: 100%;
-      max-width: 1400px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 40px;
-      padding-bottom: 20px;
-      border-bottom: 1px solid var(--border-color);
-    }
-
-    .header-branding h1 {
-      font-size: 24px;
-      font-weight: 600;
-      letter-spacing: -0.5px;
-      display: flex;
-      align-items: center;
-      gap: 12px;
-    }
-
-    .header-branding p {
-      color: var(--text-tertiary);
-      font-size: 13px;
-      margin-top: 4px;
-      font-weight: 400;
-    }
-
-    .header-meta {
-      text-align: right;
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 12px;
-      color: var(--text-secondary);
-      background: rgba(255,255,255,0.03);
-      padding: 8px 16px;
-      border-radius: 100px;
-      border: 1px solid var(--border-color);
-    }
-
-    /* --- Grid Layout --- */
-    .main-grid {
-      display: grid;
-      grid-template-columns: 2.5fr 1.2fr;
-      gap: 24px;
-      width: 100%;
-      max-width: 1400px;
-    }
-
-    /* --- Panels Generic --- */
-    .panel {
-      background: var(--bg-panel);
-      border: 1px solid var(--border-color);
-      backdrop-filter: blur(20px);
-      -webkit-backdrop-filter: blur(20px);
-      border-radius: var(--radius-lg);
-      overflow: hidden;
-      padding: 32px;
-    }
-
-    /* --- Left Column (Status & Sensors) --- */
-    .left-column {
-      display: flex;
-      flex-direction: column;
-      gap: 24px;
-    }
-
-    /* Status Hero Card */
-    .status-card {
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      align-items: center;
-      padding: 48px;
-      border-radius: var(--radius-lg);
-      background: linear-gradient(180deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0) 100%);
-      border: 1px solid var(--border-color);
-      position: relative;
-      transition: all 0.5s ease;
-    }
-
-    .status-card h2 {
-      font-size: 64px;
-      font-weight: 800;
-      letter-spacing: -2px;
-      margin-bottom: 8px;
-      background-clip: text;
-      -webkit-background-clip: text;
-    }
-
-    .status-card p {
-      font-size: 16px;
-      color: var(--text-secondary);
-      font-weight: 500;
-    }
-
-    /* Status States */
-    .status-card.safe {
-      border-color: rgba(16, 185, 129, 0.3);
-      box-shadow: var(--shadow-glow-safe);
-    }
-    .status-card.safe h2 { color: var(--color-safe); }
-
-    .status-card.warning {
-      border-color: rgba(245, 158, 11, 0.3);
-      box-shadow: 0 0 40px rgba(245, 158, 11, 0.15);
-    }
-    .status-card.warning h2 { color: var(--color-warning); }
-
-    .status-card.danger {
-      border-color: rgba(239, 68, 68, 0.3);
-      box-shadow: var(--shadow-glow-danger);
-      animation: pulse-border 2s infinite;
-    }
-    .status-card.danger h2 { color: var(--color-danger); }
-
-    @keyframes pulse-border {
-      0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }
-      70% { box-shadow: 0 0 0 20px rgba(239, 68, 68, 0); }
-      100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
-    }
-
-    /* Sensors Grid */
-    .sensors-grid {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 16px;
-    }
-
-    .sensor-card {
-      background: rgba(255,255,255,0.02);
-      border: 1px solid var(--border-color);
-      border-radius: var(--radius-md);
-      padding: 20px;
-      display: flex;
-      flex-direction: column;
-      justify-content: space-between;
-      height: 140px;
-      transition: transform 0.2s;
-    }
-
-    .sensor-card:hover {
-      background: rgba(255,255,255,0.04);
-      transform: translateY(-2px);
-    }
-
-    .sensor-card .label {
-      font-size: 12px;
-      text-transform: uppercase;
-      letter-spacing: 1px;
-      color: var(--text-tertiary);
-      font-weight: 600;
-    }
-
-    .sensor-card .value {
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 28px;
-      font-weight: 500;
-      color: var(--text-primary);
-      margin-top: auto;
-    }
-
-    /* Alert Box */
-    .alert-box {
-      background: rgba(239, 68, 68, 0.1);
-      border: 1px solid rgba(239, 68, 68, 0.3);
-      border-radius: var(--radius-md);
-      padding: 24px;
-      display: none;
-      animation: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-    }
-    
-    .alert-box.show { display: block; }
-
-    @keyframes slideUp {
-      from { opacity: 0; transform: translateY(20px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
-
-    .alert-box h4 {
-      color: var(--color-danger);
-      margin-bottom: 8px;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      font-weight: 700;
-    }
-
-    /* --- Right Column (Controls) --- */
-    .panel-header {
-      font-size: 14px;
-      font-weight: 600;
-      color: var(--text-secondary);
-      text-transform: uppercase;
-      letter-spacing: 1px;
-      margin-bottom: 24px;
-      padding-bottom: 12px;
-      border-bottom: 1px solid var(--border-color);
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    .control-group {
-      display: flex;
-      flex-direction: column;
-      gap: 20px;
-    }
-
-    .control-item {
-      background: rgba(0,0,0,0.2);
-      border-radius: var(--radius-md);
-      padding: 16px;
-      border: 1px solid var(--border-color);
-    }
-
-    .control-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 12px;
-    }
-
-    .control-item label {
-      font-size: 14px;
-      font-weight: 500;
-      color: var(--text-primary);
-    }
-
-    .status-indicator {
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-      background: var(--text-tertiary);
-      transition: background 0.3s;
-      box-shadow: 0 0 0 2px rgba(255,255,255,0.05);
-    }
-
-    /* Segmented Control Style Buttons */
-    .control-buttons {
-      display: flex;
-      background: rgba(0,0,0,0.4);
-      padding: 4px;
-      border-radius: 10px;
-      gap: 2px;
-    }
-
-    .btn {
-      flex: 1;
-      border: none;
-      background: transparent;
-      color: var(--text-tertiary);
-      padding: 10px;
-      font-family: 'Inter', sans-serif;
-      font-size: 12px;
-      font-weight: 600;
-      border-radius: 8px;
-      cursor: pointer;
-      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    }
-
-    .btn:hover { color: var(--text-primary); }
-
-    .btn-on.active {
-      background: var(--color-safe);
-      color: #000;
-      box-shadow: 0 2px 10px rgba(16, 185, 129, 0.2);
-    }
-    #barrierClose.active {
-      background: var(--color-warning); 
-      color: #000;
-    }
-
-    /* Simulation Buttons */
-    .simulation-panel {
-      margin-top: 24px;
-    }
-    
-    .sim-btn {
-      width: 100%;
-      padding: 16px;
-      margin-bottom: 12px;
-      border: 1px solid transparent;
-      border-radius: var(--radius-md);
-      font-family: 'Inter', sans-serif;
-      font-size: 13px;
-      font-weight: 600;
-      cursor: pointer;
-      transition: all 0.2s;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 8px;
-      color: white;
-    }
-
-    .sim-btn:active { transform: scale(0.98); }
-
-    .sim-btn.rain {
-      background: rgba(59, 130, 246, 0.1);
-      border-color: rgba(59, 130, 246, 0.2);
-      color: #60a5fa;
-    }
-    .sim-btn.rain:hover { background: rgba(59, 130, 246, 0.2); }
-
-    .sim-btn.earthquake {
-      background: rgba(239, 68, 68, 0.1);
-      border-color: rgba(239, 68, 68, 0.2);
-      color: #f87171;
-    }
-    .sim-btn.earthquake:hover { background: rgba(239, 68, 68, 0.2); }
-
-    .sim-btn.reset {
-      background: rgba(255, 255, 255, 0.05);
-      border-color: var(--border-color);
-      color: var(--text-secondary);
-    }
-    .sim-btn.reset:hover { background: rgba(255, 255, 255, 0.1); color: white; }
-
-    /* Mobile Response */
-    @media (max-width: 1024px) {
-      .main-grid { grid-template-columns: 1fr; }
-      .header { flex-direction: column; align-items: flex-start; gap: 16px; }
-      .header-meta { align-self: flex-start; }
-    }
-    @media (max-width: 640px) {
-      .sensors-grid { grid-template-columns: 1fr 1fr; }
-    }
-  </style>
+        /* Animations */
+        @keyframes pulse-red {
+            0% { opacity: 0.1; }
+            50% { opacity: 0.3; }
+            100% { opacity: 0.1; }
+        }
+        .animate-danger-overlay { animation: pulse-red 2s infinite; }
+        
+        /* Scrollbar */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #09090b; }
+        ::-webkit-scrollbar-thumb { background: #27272a; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #3f3f46; }
+        
+        /* Fade In */
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: translateY(0); } }
+        .animate-fade-in { animation: fadeIn 0.3s ease-out forwards; }
+    </style>
 </head>
-<body>
+<body class="bg-zinc-950 text-zinc-300 min-h-screen relative overflow-x-hidden">
 
-  <div class="header">
-    <div class="header-branding">
-      <h1>
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.54 15H17a2 2 0 0 0-2 2v4.54"/><path d="M7 3.34V5a3 3 0 0 0 3 3a2 2 0 0 1 2 2c0 1.1.9 2 2 2a2 2 0 0 0 2-2c0-1.1.9-2 2-2h3.17"/><path d="M11 21.95V18a2 2 0 0 0-2-2a2 2 0 0 1-2-2v-1a2 2 0 0 0-2-2H2.05"/><circle cx="12" cy="12" r="10"/></svg>
-        LANDSLIDE MONITORING CENTER
-      </h1>
-      <p>Department of Geological Hazard Control & Response</p>
+    <!-- Danger Overlay (Fixed Layer) -->
+    <div id="danger-overlay" class="fixed inset-0 bg-rose-900 pointer-events-none opacity-0 transition-opacity duration-500 z-0"></div>
+
+    <!-- Dashboard Container -->
+    <div class="w-full max-w-[1920px] mx-auto space-y-8 p-6 md:p-10 relative z-10">
+        
+        <!-- Header -->
+        <header class="flex flex-col md:flex-row justify-between items-start md:items-center pb-6 border-b border-zinc-800/50">
+            <div>
+                <div class="flex items-center gap-3">
+                    <div class="p-2.5 bg-indigo-500/10 rounded-xl border border-indigo-500/20 shadow-[0_0_15px_-3px_rgba(99,102,241,0.2)]">
+                        <svg class="w-7 h-7 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+                        </svg>
+                    </div>
+                    <div>
+                        <h1 class="text-3xl font-bold text-zinc-100 tracking-tight">GeoGuard <span class="text-indigo-500 font-mono text-xl">IoT</span></h1>
+                        <p class="text-xs text-zinc-500 font-mono tracking-wide mt-0.5">ESP8266 NODE • FIREBASE RTDB • MPU ARRAY</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="mt-6 md:mt-0 flex items-center gap-4">
+                <div id="connection-badge" class="flex items-center gap-2.5 px-4 py-2 rounded-full bg-zinc-900/80 border border-zinc-800 text-xs font-medium text-zinc-500 transition-colors shadow-lg">
+                    <span class="relative flex h-2.5 w-2.5">
+                      <span id="conn-ping" class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75 hidden"></span>
+                      <span id="conn-dot" class="relative inline-flex rounded-full h-2.5 w-2.5 bg-zinc-600"></span>
+                    </span>
+                    <span id="conn-text">Connecting...</span>
+                </div>
+                
+                <button id="force-danger-btn" class="px-5 py-2 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/20 rounded-lg text-sm font-medium transition-all hover:shadow-[0_0_15px_-3px_rgba(244,63,94,0.3)] cursor-pointer active:scale-95">
+                    Simulate Danger
+                </button>
+            </div>
+        </header>
+
+        <!-- Panoramic Grid Layout -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 lg:gap-8">
+
+            <!-- ROW 1 -->
+            
+            <!-- 1. Main Status Card (Top Left, 2 cols) -->
+            <div id="status-card" class="glass-panel rounded-3xl p-8 md:col-span-2 relative overflow-hidden transition-all duration-500 flex flex-col justify-between min-h-[280px]">
+                <div class="absolute top-0 right-0 p-6 opacity-5">
+                    <svg class="w-48 h-48" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2L2 22h20L12 2zm0 4l6.5 13h-13L12 6z"/></svg>
+                </div>
+                
+                <div class="relative z-10">
+                    <div class="flex justify-between items-start">
+                        <h2 class="text-zinc-500 text-xs font-bold uppercase tracking-[0.2em] mb-1">Fused Risk Analysis</h2>
+                        <span id="risk-badge" class="px-2 py-1 rounded bg-zinc-800/50 border border-zinc-700 text-zinc-400 font-mono text-xs">NBRO Logic Active</span>
+                    </div>
+                    <div id="status-display" class="text-6xl lg:text-7xl font-bold text-emerald-400 tracking-tighter mt-4">SAFE</div>
+                </div>
+                
+                <div class="relative z-10 mt-auto pt-6">
+                    <div class="h-1.5 bg-zinc-800/50 rounded-full overflow-hidden mb-3">
+                        <div id="risk-bar" class="h-full bg-gradient-to-r from-emerald-500 to-emerald-400 w-0 transition-all duration-1000 ease-out"></div>
+                    </div>
+                    <p id="status-msg" class="text-sm text-zinc-400 font-mono border-l-2 border-emerald-500/30 pl-3">Sensors active. No anomalies detected within geofence.</p>
+                </div>
+            </div>
+
+            <!-- 2. Soil Moisture (Top Middle) -->
+            <div class="glass-panel rounded-3xl p-6 flex flex-col justify-between hover:bg-zinc-900/60 transition duration-300 group relative overflow-hidden">
+                 <div class="absolute right-0 top-0 w-24 h-24 bg-amber-500/5 rounded-full blur-2xl -mr-4 -mt-4 pointer-events-none"></div>
+                <div class="flex justify-between items-start relative z-10">
+                    <div class="p-3 rounded-2xl bg-zinc-900/80 border border-zinc-800 text-amber-400 shadow-inner">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.384-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" /></svg>
+                    </div>
+                    <span class="text-[10px] font-mono text-zinc-600 uppercase tracking-wider bg-zinc-900/50 px-2 py-1 rounded">Soil Cap</span>
+                </div>
+                <div class="mt-6 relative z-10">
+                    <h4 class="text-zinc-500 text-xs uppercase font-bold tracking-wider">Soil Saturation</h4>
+                    <div class="flex items-baseline gap-1 mt-2">
+                        <span id="soil-val" class="text-4xl font-bold text-zinc-100 tracking-tight">0</span>
+                        <span class="text-lg text-zinc-500 font-medium">%</span>
+                    </div>
+                    <div class="w-full bg-zinc-800/50 h-2 rounded-full mt-4 overflow-hidden">
+                        <div id="soil-bar" class="h-full bg-amber-500 transition-all duration-500 shadow-[0_0_10px_rgba(245,158,11,0.5)]" style="width: 0%"></div>
+                    </div>
+                    <p id="soil-risk-text" class="text-[10px] text-zinc-500 mt-2 font-mono">Slope-adjusted risk: <span class="text-zinc-300">--</span></p>
+                </div>
+            </div>
+
+            <!-- 3. Rainfall (Top Right) -->
+            <div class="glass-panel rounded-3xl p-6 flex flex-col justify-between hover:bg-zinc-900/60 transition duration-300 group relative overflow-hidden">
+                 <div class="absolute right-0 top-0 w-24 h-24 bg-cyan-500/5 rounded-full blur-2xl -mr-4 -mt-4 pointer-events-none"></div>
+                <div class="flex justify-between items-start relative z-10">
+                    <div class="p-3 rounded-2xl bg-zinc-900/80 border border-zinc-800 text-cyan-400 shadow-inner">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 15a4 4 0 004 4h9a5 5 0 10-.1-9.999 5.002 5.002 0 10-9.78 2.096A4.001 4.001 0 003 15z" /></svg>
+                    </div>
+                    <span class="text-[10px] font-mono text-zinc-600 uppercase tracking-wider bg-zinc-900/50 px-2 py-1 rounded">Rain Sensor</span>
+                </div>
+                <div class="mt-6 relative z-10">
+                    <h4 class="text-zinc-500 text-xs uppercase font-bold tracking-wider">Rain Intensity</h4>
+                    <div class="flex items-baseline gap-1 mt-2">
+                        <span id="rain-val" class="text-4xl font-bold text-zinc-100 tracking-tight">0</span>
+                        <span class="text-lg text-zinc-500 font-medium">mm</span>
+                    </div>
+                    <p id="rain-status" class="text-xs font-mono mt-4 py-1 px-2 rounded bg-zinc-900/50 inline-block border border-zinc-800">NBRO: <span class="text-zinc-400">--</span></p>
+                </div>
+            </div>
+
+            <!-- ROW 2 -->
+
+            <!-- 4. MPU Top (Row 2, Col 1) -->
+            <div class="glass-panel rounded-3xl p-6 flex flex-col justify-between hover:bg-zinc-900/60 transition duration-300 group relative overflow-hidden">
+                 <div class="absolute right-0 top-0 w-24 h-24 bg-indigo-500/5 rounded-full blur-2xl -mr-4 -mt-4 pointer-events-none"></div>
+                <div class="flex justify-between items-start relative z-10">
+                    <div class="p-3 rounded-2xl bg-zinc-900/80 border border-zinc-800 text-indigo-400 shadow-inner">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z" /></svg>
+                    </div>
+                    <span class="text-[10px] font-mono text-zinc-600 uppercase tracking-wider bg-zinc-900/50 px-2 py-1 rounded">MPU-3</span>
+                </div>
+                <div class="mt-6 relative z-10">
+                    <h4 class="text-zinc-500 text-xs uppercase font-bold tracking-wider">Top Sensor</h4>
+                    <div class="flex items-baseline gap-1 mt-2">
+                        <span id="mpu3-val" class="text-3xl font-bold text-zinc-100 tracking-tight">0.0</span>
+                        <span class="text-sm text-zinc-500">deg</span>
+                    </div>
+                    <div id="mpu3-status" class="text-[10px] font-mono mt-2 text-emerald-400">Stable</div>
+                </div>
+            </div>
+
+            <!-- 5. MPU Middle (Row 2, Col 2) -->
+            <div class="glass-panel rounded-3xl p-6 flex flex-col justify-between hover:bg-zinc-900/60 transition duration-300 group relative overflow-hidden">
+                 <div class="absolute right-0 top-0 w-24 h-24 bg-indigo-500/5 rounded-full blur-2xl -mr-4 -mt-4 pointer-events-none"></div>
+                <div class="flex justify-between items-start relative z-10">
+                    <div class="p-3 rounded-2xl bg-zinc-900/80 border border-zinc-800 text-indigo-400 shadow-inner">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z" /></svg>
+                    </div>
+                    <span class="text-[10px] font-mono text-zinc-600 uppercase tracking-wider bg-zinc-900/50 px-2 py-1 rounded">MPU-1</span>
+                </div>
+                <div class="mt-6 relative z-10">
+                    <h4 class="text-zinc-500 text-xs uppercase font-bold tracking-wider">Middle Sensor</h4>
+                    <div class="flex items-baseline gap-1 mt-2">
+                        <span id="mpu1-val" class="text-3xl font-bold text-zinc-100 tracking-tight">0.0</span>
+                        <span class="text-sm text-zinc-500">deg</span>
+                    </div>
+                    <div id="mpu1-status" class="text-[10px] font-mono mt-2 text-emerald-400">Stable</div>
+                </div>
+            </div>
+
+            <!-- 6. MPU Bottom (Row 2, Col 3) -->
+            <div class="glass-panel rounded-3xl p-6 flex flex-col justify-between hover:bg-zinc-900/60 transition duration-300 group relative overflow-hidden">
+                 <div class="absolute right-0 top-0 w-24 h-24 bg-indigo-500/5 rounded-full blur-2xl -mr-4 -mt-4 pointer-events-none"></div>
+                <div class="flex justify-between items-start relative z-10">
+                    <div class="p-3 rounded-2xl bg-zinc-900/80 border border-zinc-800 text-indigo-400 shadow-inner">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z" /></svg>
+                    </div>
+                    <span class="text-[10px] font-mono text-zinc-600 uppercase tracking-wider bg-zinc-900/50 px-2 py-1 rounded">MPU-2</span>
+                </div>
+                <div class="mt-6 relative z-10">
+                    <h4 class="text-zinc-500 text-xs uppercase font-bold tracking-wider">Bottom Sensor</h4>
+                    <div class="flex items-baseline gap-1 mt-2">
+                        <span id="mpu2-val" class="text-3xl font-bold text-zinc-100 tracking-tight">0.0</span>
+                        <span class="text-sm text-zinc-500">deg</span>
+                    </div>
+                    <div id="mpu2-status" class="text-[10px] font-mono mt-2 text-emerald-400">Stable</div>
+                </div>
+            </div>
+
+            <!-- 7. Environment (Row 2, Col 4) -->
+             <div class="glass-panel rounded-3xl p-6 flex flex-col justify-between hover:bg-zinc-900/60 transition duration-300 group relative overflow-hidden">
+                 <div class="absolute right-0 top-0 w-24 h-24 bg-emerald-500/5 rounded-full blur-2xl -mr-4 -mt-4 pointer-events-none"></div>
+                <div class="flex justify-between items-start relative z-10">
+                    <div class="p-3 rounded-2xl bg-zinc-900/80 border border-zinc-800 text-emerald-400 shadow-inner">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
+                    </div>
+                    <span class="text-[10px] font-mono text-zinc-600 uppercase tracking-wider bg-zinc-900/50 px-2 py-1 rounded">DHT22</span>
+                </div>
+                <div class="mt-6 grid grid-cols-2 gap-4 relative z-10">
+                    <div class="bg-zinc-900/40 p-3 rounded-xl border border-zinc-800/50">
+                        <div class="text-[10px] text-zinc-500 uppercase tracking-wider">Temp</div>
+                        <div class="text-xl font-bold text-zinc-100 mt-1"><span id="temp-val">--</span>°C</div>
+                    </div>
+                    <div class="bg-zinc-900/40 p-3 rounded-xl border border-zinc-800/50">
+                        <div class="text-[10px] text-zinc-500 uppercase tracking-wider">Humid</div>
+                        <div class="text-xl font-bold text-zinc-100 mt-1"><span id="humid-val">--</span>%</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ROW 3 -->
+
+            <!-- 8. Alert Log (Bottom, 2 cols) -->
+            <div class="glass-panel rounded-3xl p-0 md:col-span-2 flex flex-col min-h-[240px]">
+                <div class="p-5 border-b border-zinc-800 bg-zinc-900/30 flex justify-between items-center rounded-t-3xl">
+                    <h3 class="text-zinc-300 font-semibold text-sm flex items-center gap-2">
+                        <svg class="w-4 h-4 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                        Decision Log
+                    </h3>
+                    <button id="clear-log" class="text-[10px] uppercase tracking-wider text-zinc-600 hover:text-zinc-300 transition px-2 py-1 border border-zinc-800 rounded hover:bg-zinc-800">Clear</button>
+                </div>
+                <div id="alert-log" class="flex-1 overflow-y-auto p-5 space-y-3 font-mono text-xs">
+                    <div class="flex gap-3 text-zinc-600">
+                        <span>--:--:--</span>
+                        <span>System Initialized. Waiting for stream...</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 9. Research/Logic Table (Bottom, 2 cols) -->
+            <div class="glass-panel rounded-3xl p-6 md:col-span-2 text-xs text-zinc-400 overflow-hidden">
+                <h3 class="text-zinc-200 font-semibold mb-4 flex items-center gap-2">
+                    <svg class="w-4 h-4 text-zinc-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" /></svg>
+                    Logic Matrix & Thresholds
+                </h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <h4 class="text-[10px] uppercase tracking-widest text-indigo-400 mb-2 font-bold">NBRO Rainfall</h4>
+                        <ul class="space-y-1.5 border-l border-zinc-800 pl-3">
+                            <li class="flex justify-between"><span>Watch</span> <span class="text-zinc-300">>75mm/day</span></li>
+                            <li class="flex justify-between"><span>Alert</span> <span class="text-zinc-300">>100mm/day</span></li>
+                            <li class="flex justify-between"><span>Evacuate</span> <span class="text-rose-400 font-bold">>150mm/day</span></li>
+                        </ul>
+                    </div>
+                    <div>
+                        <h4 class="text-[10px] uppercase tracking-widest text-amber-400 mb-2 font-bold">Soil vs. Slope</h4>
+                        <table class="w-full text-left opacity-80">
+                            <tr class="border-b border-zinc-800/50"><td class="py-1">20-40% + >25°</td><td class="text-amber-400 text-right">Mod</td></tr>
+                            <tr class="border-b border-zinc-800/50"><td class="py-1">40-60% + >25°</td><td class="text-orange-400 text-right">High</td></tr>
+                            <tr><td class="py-1">>60% + >15°</td><td class="text-rose-500 text-right font-bold">Critical</td></tr>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <footer class="text-center text-[10px] text-zinc-700 py-8 font-mono uppercase tracking-widest">
+            &copy; 2023 GeoGuard Systems | NodeMCU ESP8266 Integration | NBRO Standards
+        </footer>
+
     </div>
-    <div class="header-meta" id="timestamp">
-      System Initializing...
-    </div>
-  </div>
 
-  <div class="main-grid">
-    <!-- Left Panel: Visual Data -->
-    <div class="left-column">
-      
-      <!-- Main Status Card -->
-      <div class="status-card safe" id="statusCard">
-        <h2 id="statusText">SAFE</h2>
-        <p>System operating within nominal parameters</p>
-      </div>
-
-      <!-- Emergency Alert Notification -->
-      <div class="alert-box" id="alertBox">
-        <h4>
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-          CRITICAL ALERT
-        </h4>
-        <p id="alertText" style="color: #fca5a5; font-size: 14px; line-height: 1.5;">Detection logic trigger.</p>
-      </div>
-
-      <!-- Sensor Grid -->
-      <div class="sensors-grid">
-        <div class="sensor-card">
-          <div class="label">Soil Moisture</div>
-          <div class="value" id="soilValue">--%</div>
-        </div>
-        <div class="sensor-card">
-          <div class="label">Tilt Sensor A</div>
-          <div class="value" id="tilt1Value">--°</div>
-        </div>
-        <div class="sensor-card">
-          <div class="label">Tilt Sensor B</div>
-          <div class="value" id="tilt2Value">--°</div>
-        </div>
-        <div class="sensor-card">
-          <div class="label">Vibration Index</div>
-          <div class="value" id="vibValue">--</div>
-        </div>
-        <div class="sensor-card">
-          <div class="label">Precipitation</div>
-          <div class="value" id="rainValue">--</div>
-        </div>
-        <div class="sensor-card">
-          <div class="label">Seismic Status</div>
-          <div class="value" id="seismicValue">--</div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Right Panel: Controls -->
-    <div class="right-column">
-      
-      <!-- Manual Controls -->
-      <div class="panel">
-        <div class="panel-header">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="16" height="16" rx="2" ry="2"/><rect x="9" y="9" width="6" height="6"/><line x1="9" y1="1" x2="9" y2="4"/><line x1="15" y1="1" x2="15" y2="4"/><line x1="9" y1="20" x2="9" y2="23"/><line x1="15" y1="20" x2="15" y2="23"/><line x1="20" y1="9" x2="23" y2="9"/><line x1="20" y1="14" x2="23" y2="14"/><line x1="1" y1="9" x2="4" y2="9"/><line x1="1" y1="14" x2="4" y2="14"/></svg>
-          Field Operations
-        </div>
-
-        <div class="control-group">
-          <!-- Buzzer -->
-          <div class="control-item">
-            <div class="control-header">
-              <label>Warning Buzzer</label>
-              <span class="status-indicator" id="buzzerIndicator"></span>
-            </div>
-            <div class="control-buttons">
-              <button class="btn btn-off" id="buzzerOff">Deactivate</button>
-              <button class="btn btn-on" id="buzzerOn">Active</button>
-            </div>
-          </div>
-
-          <!-- Lights -->
-          <div class="control-item">
-            <div class="control-header">
-              <label>Emergency Lights</label>
-              <span class="status-indicator" id="lightsIndicator"></span>
-            </div>
-            <div class="control-buttons">
-              <button class="btn btn-off" id="lightsOff">Deactivate</button>
-              <button class="btn btn-on" id="lightsOn">Active</button>
-            </div>
-          </div>
-
-          <!-- Barrier -->
-          <div class="control-item">
-            <div class="control-header">
-              <label>Road Access Barrier</label>
-              <span class="status-indicator" id="barrierIndicator"></span>
-            </div>
-            <div class="control-buttons">
-              <button class="btn btn-off" id="barrierOpen">Access Open</button>
-              <button class="btn btn-on" id="barrierClose">Locked</button>
-            </div>
-          </div>
-
-          <!-- Siren -->
-          <div class="control-item">
-            <div class="control-header">
-              <label>Public Siren</label>
-              <span class="status-indicator" id="sirenIndicator"></span>
-            </div>
-            <div class="control-buttons">
-              <button class="btn btn-off" id="sirenOff">Silent</button>
-              <button class="btn btn-on" id="sirenOn">Alarm</button>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Simulations -->
-      <div class="panel simulation-panel">
-        <div class="panel-header" style="color: #fbbf24; border-color: rgba(251, 191, 36, 0.2);">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
-          Scenario Simulation
-        </div>
-        <button class="sim-btn rain" id="simulateRain">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="16" y1="13" x2="16" y2="21"/><line x1="8" y1="13" x2="8" y2="21"/><line x1="12" y1="15" x2="12" y2="23"/><path d="M20 16.58A5 5 0 0 0 18 7h-1.26A8 8 0 1 0 4 15.25"/></svg>
-          Simulate Heavy Rainfall
-        </button>
-        <button class="sim-btn earthquake" id="simulateEarthquake">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
-          Simulate Seismic Event
-        </button>
-        <button class="sim-btn reset" id="resetSim">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
-          Reset Parameters
-        </button>
-      </div>
-
-    </div>
-  </div>
-
-  <!-- JS: Firebase + Logic -->
-  <script type="module">
+    <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
-    import { getDatabase, ref, onValue, update } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-database.js";
+    import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-database.js";
 
     const firebaseConfig = {
-      apiKey: "AIzaSyCSEWW0wawOzJgvxyOmDqXMqE8nihprCd0",
-      authDomain: "iot-project-3c897.firebaseapp.com",
-      databaseURL: "https://iot-project-3c897-default-rtdb.asia-southeast1.firebasedatabase.app",
-      projectId: "iot-project-3c897",
-      storageBucket: "iot-project-3c897.firebasestorage.app",
-      messagingSenderId: "876143785284",
-      appId: "1:876143785284:web:3435ff5210b9ea92475311",
-      measurementId: "G-X44B4KWT65"
+        apiKey: "AIzaSyCSEWW0wawOzJgvxyOmDqXMqE8nihprCd0",
+        authDomain: "iot-project-3c897.firebaseapp.com",
+        databaseURL: "https://iot-project-3c897-default-rtdb.asia-southeast1.firebasedatabase.app",
+        projectId: "iot-project-3c897",
+        storageBucket: "iot-project-3c897.firebasestorage.app",
+        messagingSenderId: "876143785284",
+        appId: "1:876143785284:web:3435ff5210b9ea92475311",
+        measurementId: "G-X44B4KWT65"
     };
 
+    // Initialize Firebase
     const app = initializeApp(firebaseConfig);
     const db = getDatabase(app);
 
-    // We now read/write under /sensors
-    const rootRef = ref(db, "/sensors");
-
-    // ----- Local system state -----
-    let systemState = {
-      status: "SAFE",
-      soil: 0,
-      tilt1: 0,
-      tilt2: 0,
-      vibration: "Low",
-      rain: false,
-      seismic: "Normal",
-      buzzer: false,
-      lights: false,
-      barrier: false,
-      siren: false,
-      roadClosed: false
+    // --- APP STATE ---
+    let appState = {
+        sensors: {
+            mpu1: 0,
+            mpu2: 0,
+            mpu3: 0,
+            soil: 0,
+            rain: 0,
+            temp: 0,
+            humid: 0
+        },
+        status: "SAFE",
+        lastUpdate: Date.now()
     };
 
-    // ⭐ simulation flag
-    let simulationMode = false;
+    // --- FIREBASE LISTENER (path = sensor_data) ---
+    const sensorsRef = ref(db, "sensor_data");   // 👈 IMPORTANT
 
-    // ----- DOM elements -----
-    const statusCard = document.getElementById("statusCard");
-    const statusText = document.getElementById("statusText");
-    const soilValue = document.getElementById("soilValue");
-    const tilt1Value = document.getElementById("tilt1Value");
-    const tilt2Value = document.getElementById("tilt2Value");
-    const vibValue = document.getElementById("vibValue");
-    const rainValue = document.getElementById("rainValue");
-    const seismicValue = document.getElementById("seismicValue");
-    const alertBox = document.getElementById("alertBox");
-    const alertText = document.getElementById("alertText");
-    const timestamp = document.getElementById("timestamp");
+    onValue(
+        sensorsRef,
+        (snapshot) => {
+            const data = snapshot.val();
+            updateConnectionStatus(true);
 
-    const buzzerIndicator = document.getElementById("buzzerIndicator");
-    const lightsIndicator = document.getElementById("lightsIndicator");
-    const barrierIndicator = document.getElementById("barrierIndicator");
-    const sirenIndicator = document.getElementById("sirenIndicator");
+            if (data) {
+                // data has keys: MPU1_Tilt, MPU2_Tilt, MPU3_Tilt, Soil, Rain, Humidity, Temperature...
+                appState.sensors.mpu1 = parseFloat(data.MPU1_Tilt ?? 0);
+                appState.sensors.mpu2 = parseFloat(data.MPU2_Tilt ?? 0);
+                appState.sensors.mpu3 = parseFloat(data.MPU3_Tilt ?? 0);
 
-    function updateIndicator(indicator, active) {
-      indicator.style.background = active ? "var(--color-safe)" : "var(--text-tertiary)";
-      if (indicator.id === "barrierIndicator" && active) {
-        indicator.style.background = "var(--color-warning)";
-      }
+                appState.sensors.soil = parseFloat(data.Soil ?? 0);
+                appState.sensors.rain = parseFloat(data.Rain ?? 0);
+                appState.sensors.temp = parseFloat(data.Temperature ?? 0);
+                appState.sensors.humid = parseFloat(data.Humidity ?? 0);
+
+                appState.lastUpdate = Date.now();
+                processSensorData();
+            }
+        },
+        (error) => {
+            console.error("Firebase Read Error:", error);
+            updateConnectionStatus(false);
+        }
+    );
+
+    // --- CONNECTION BADGE ---
+    function updateConnectionStatus(connected) {
+        const dot = document.getElementById("conn-dot");
+        const ping = document.getElementById("conn-ping");
+        const text = document.getElementById("conn-text");
+
+        if (connected) {
+            dot.classList.remove("bg-zinc-600", "bg-red-500");
+            dot.classList.add("bg-emerald-500");
+            ping.classList.remove("hidden");
+            text.innerText = "Live Stream";
+            text.classList.add("text-emerald-500");
+        } else {
+            dot.classList.remove("bg-emerald-500");
+            dot.classList.add("bg-red-500");
+            ping.classList.add("hidden");
+            text.innerText = "Offline";
+            text.classList.remove("text-emerald-500");
+        }
     }
 
-    function pushToFirebase(partial) {
-      const payload = {
-        ...partial,
-        lastUpdate: Math.floor(Date.now() / 1000),
-        State: systemState.status
-      };
-      update(rootRef, payload).catch(err => console.error("Firebase update error:", err));
+    // --- LOGIC CORE ---
+    function processSensorData() {
+        const s = appState.sensors;
+
+        // Normalize Tilts
+        const t1 = Math.abs(s.mpu1);
+        const t2 = Math.abs(s.mpu2);
+        const t3 = Math.abs(s.mpu3);
+        const maxTilt = Math.max(t1, t2, t3);
+
+        let newStatus = "SAFE";
+        let reasons = [];
+        let riskLevel = 0; // 0=Safe, 1=Watch, 2=Alert, 3=Evac/Crit
+
+        // 1. Rain (NBRO)
+        if (s.rain >= 150) {
+            riskLevel = Math.max(riskLevel, 3);
+            reasons.push("Rain >150mm (NBRO Evac)");
+        } else if (s.rain >= 100) {
+            riskLevel = Math.max(riskLevel, 2);
+            reasons.push("Rain >100mm (NBRO Alert)");
+        } else if (s.rain >= 75) {
+            riskLevel = Math.max(riskLevel, 1);
+            reasons.push("Rain >75mm (NBRO Watch)");
+        }
+
+        // 2. Soil x Slope
+        if (s.soil >= 20 && s.soil < 40 && maxTilt > 25) {
+            riskLevel = Math.max(riskLevel, 2);
+            reasons.push(Mod Risk: Soil ${Math.round(s.soil)}% + Slope >25°);
+        } else if (s.soil >= 40 && s.soil < 60 && maxTilt > 25) {
+            riskLevel = Math.max(riskLevel, 3);
+            reasons.push(High Risk: Soil ${Math.round(s.soil)}% + Slope >25°);
+        } else if (s.soil >= 60 && maxTilt > 15) {
+            riskLevel = Math.max(riskLevel, 3);
+            reasons.push(CRITICAL: Soil ${Math.round(s.soil)}% + Slope >15°);
+        }
+
+        // 3. Pure slope
+        if (maxTilt > 45) {
+            reasons.push("Extreme Slope Instability");
+            riskLevel = Math.max(riskLevel, 3);
+        }
+
+        // Decision mapping
+        if (riskLevel === 3) newStatus = "DANGER";
+        else if (riskLevel === 2) newStatus = "WARNING";
+        else if (riskLevel === 1) newStatus = "WARNING";
+        else newStatus = "SAFE";
+
+        // Log when change
+        if (newStatus !== appState.status) {
+            if (newStatus === "DANGER" || newStatus === "WARNING" || (appState.status !== "SAFE" && newStatus === "SAFE")) {
+                addLogEntry(newStatus, reasons.join(", ") || "Conditions normalized.");
+            }
+        }
+
+        appState.status = newStatus;
+        updateUI(reasons, maxTilt);
     }
 
-    function updateDisplay() {
-      soilValue.textContent = systemState.soil + "%";
-      tilt1Value.textContent = systemState.tilt1.toFixed(1) + "°";
-      tilt2Value.textContent = systemState.tilt2.toFixed(1) + "°";
+    // --- UI UPDATES ---
+    function updateUI(reasons, maxTilt) {
+        const s = appState.sensors;
 
-      const vibLabel = systemState.vibration;
-      vibValue.textContent = vibLabel;
+        // MPU cards
+        updateMPUCard("mpu1", s.mpu1);
+        updateMPUCard("mpu2", s.mpu2);
+        updateMPUCard("mpu3", s.mpu3);
 
-      rainValue.textContent = systemState.rain ? "Rain Risk" : "No/Low Rain";
-      seismicValue.textContent = systemState.seismic;
+        // Soil
+        document.getElementById("soil-val").innerText = Math.round(s.soil);
+        document.getElementById("soil-bar").style.width = Math.min(100, s.soil) + "%";
 
-      statusCard.classList.remove("safe", "warning", "danger");
-      statusCard.classList.add(systemState.status.toLowerCase());
-      statusText.textContent = systemState.status;
+        const soilMsg = document.getElementById("soil-risk-text");
+        if (s.soil >= 60 && maxTilt > 15)
+            soilMsg.innerHTML = 'Slope-adjusted risk: <span class="text-rose-500 font-bold">CRITICAL</span>';
+        else if (s.soil >= 40 && maxTilt > 25)
+            soilMsg.innerHTML = 'Slope-adjusted risk: <span class="text-orange-400">HIGH</span>';
+        else if (s.soil >= 20 && maxTilt > 25)
+            soilMsg.innerHTML = 'Slope-adjusted risk: <span class="text-amber-400">MODERATE</span>';
+        else
+            soilMsg.innerHTML = 'Slope-adjusted risk: <span class="text-emerald-400">LOW</span>';
 
-      const descriptions = {
-        SAFE: "System operating within nominal parameters",
-        WARNING: "Elevated risk detected - Monitoring increased",
-        DANGER: "CRITICAL RISK - EVACUATION PROTOCOL"
-      };
-      statusCard.querySelector("p").textContent =
-        descriptions[systemState.status] || "Status unknown";
+        // Rain
+        document.getElementById("rain-val").innerText = Math.round(s.rain);
+        const rStat = document.querySelector("#rain-status span");
+        if (s.rain >= 150) {
+            rStat.innerText = "Evacuation";
+            rStat.className = "text-rose-500 font-bold";
+        } else if (s.rain >= 100) {
+            rStat.innerText = "Alert";
+            rStat.className = "text-orange-400 font-bold";
+        } else if (s.rain >= 75) {
+            rStat.innerText = "Watch";
+            rStat.className = "text-amber-400 font-bold";
+        } else {
+            rStat.innerText = "Normal";
+            rStat.className = "text-zinc-400";
+        }
 
-      if (systemState.status === "DANGER") {
-        alertBox.classList.add("show");
-        const alerts = [];
-        if (systemState.soil > 70) alerts.push("Critical Moisture");
-        if (systemState.tilt1 > 20 || systemState.tilt2 > 20)
-          alerts.push("Ground Tilt Detected");
-        if (vibLabel === "High") alerts.push("Seismic Activity High");
-        if (systemState.roadClosed) alerts.push("ROAD BARRIERS LOCKED");
-        alertText.textContent = alerts.join(" • ");
-      } else {
-        alertBox.classList.remove("show");
-      }
+        // Environment
+        document.getElementById("temp-val").innerText = s.temp.toFixed(1);
+        document.getElementById("humid-val").innerText = Math.round(s.humid);
 
-      updateIndicator(buzzerIndicator, systemState.buzzer);
-      updateIndicator(lightsIndicator, systemState.lights);
-      updateIndicator(barrierIndicator, systemState.barrier);
-      updateIndicator(sirenIndicator, systemState.siren);
+        // Main status
+        const card = document.getElementById("status-card");
+        const txt = document.getElementById("status-display");
+        const bar = document.getElementById("risk-bar");
+        const msg = document.getElementById("status-msg");
+        const overlay = document.getElementById("danger-overlay");
 
-      toggleBtnVisuals("buzzer", systemState.buzzer);
-      toggleBtnVisuals("lights", systemState.lights);
-      toggleBtnVisuals("barrier", systemState.barrier);
-      toggleBtnVisuals("siren", systemState.siren);
+        card.classList.remove("glow-safe", "glow-warning", "glow-danger");
+
+        if (appState.status === "SAFE") {
+            card.classList.add("glow-safe");
+            txt.innerText = "SAFE";
+            txt.className = "text-6xl lg:text-7xl font-bold text-emerald-400 tracking-tighter mt-4";
+            bar.className = "h-full bg-emerald-500 w-0 transition-all duration-700";
+            bar.style.width = "5%";
+            msg.innerText = "All sensors within NBRO safety baselines.";
+            msg.className = "text-sm text-zinc-400 font-mono border-l-2 border-emerald-500/30 pl-3";
+            overlay.classList.remove("animate-danger-overlay", "opacity-30");
+            overlay.classList.add("opacity-0");
+        } else if (appState.status === "WARNING") {
+            card.classList.add("glow-warning");
+            txt.innerText = "WARNING";
+            txt.className = "text-6xl lg:text-7xl font-bold text-amber-400 tracking-tighter mt-4";
+            bar.className = "h-full bg-amber-500 w-0 transition-all duration-700";
+            bar.style.width = "50%";
+            msg.innerText = reasons.join(". ") || "Elevated risk factors detected.";
+            msg.className = "text-sm text-zinc-400 font-mono border-l-2 border-amber-500/30 pl-3";
+            overlay.classList.remove("animate-danger-overlay", "opacity-30");
+            overlay.classList.add("opacity-0");
+        } else {
+            card.classList.add("glow-danger");
+            txt.innerText = "DANGER";
+            txt.className = "text-6xl lg:text-7xl font-bold text-rose-500 tracking-tighter mt-4 animate-pulse";
+            bar.className = "h-full bg-rose-500 w-0 transition-all duration-700";
+            bar.style.width = "100%";
+            msg.innerText = (reasons.join(". ") || "Critical conditions.") + " EVACUATE.";
+            msg.className = "text-sm text-rose-300 font-mono border-l-2 border-rose-500 pl-3 font-bold";
+            overlay.classList.remove("opacity-0");
+            overlay.classList.add("opacity-30", "animate-danger-overlay");
+        }
     }
 
-    function toggleBtnVisuals(type, isActive) {
-      const btnOn = document.getElementById(
-        type + (type === "barrier" ? "Close" : "On")
-      );
-      const btnOff = document.getElementById(
-        type + (type === "barrier" ? "Open" : "Off")
-      );
-      if (!btnOn || !btnOff) return;
+    function updateMPUCard(idBase, val) {
+        const elVal = document.getElementById(${idBase}-val);
+        const elStat = document.getElementById(${idBase}-status);
 
-      if (isActive) {
-        btnOn.classList.add("active");
-        btnOff.classList.remove("active");
-      } else {
-        btnOn.classList.remove("active");
-        btnOff.classList.add("active");
-      }
+        const absVal = Math.abs(val);
+        elVal.innerText = absVal.toFixed(1);
+
+        if (absVal > 45) {
+            elStat.innerText = "Highly Variable (>45°)";
+            elStat.className = "text-[10px] font-mono mt-2 text-rose-400 font-bold";
+        } else if (absVal > 35) {
+            elStat.innerText = "High Slope (35-45°)";
+            elStat.className = "text-[10px] font-mono mt-2 text-orange-400";
+        } else if (absVal > 25) {
+            elStat.innerText = "Mod-High (25-35°)";
+            elStat.className = "text-[10px] font-mono mt-2 text-amber-400";
+        } else if (absVal > 15) {
+            elStat.innerText = "Low-Mod (15-25°)";
+            elStat.className = "text-[10px] font-mono mt-2 text-emerald-200";
+        } else {
+            elStat.innerText = "Very Low (<15°)";
+            elStat.className = "text-[10px] font-mono mt-2 text-emerald-400";
+        }
     }
 
-    // ----- READ from Firebase (sensors + controls) -----
-    onValue(rootRef, (snap) => {
-      // If simulation is ON, ignore real values
-      if (simulationMode) return;
+    function addLogEntry(status, message) {
+        const log = document.getElementById("alert-log");
+        const div = document.createElement("div");
+        const time = new Date().toLocaleTimeString("en-US", { hour12: false });
 
-      const data = snap.val() || {};
+        let colorClass = "text-zinc-400";
+        if (status === "DANGER") colorClass = "text-rose-400 font-bold";
+        if (status === "WARNING") colorClass = "text-amber-400";
+        if (status === "SAFE") colorClass = "text-emerald-400";
 
-      // 🌱 Soil: /sensors/soil/value & /sensors/soil/level
-      const soilNode = data.soil || {};
-      systemState.soil = soilNode.value ?? 0;
-      const soilLevel = soilNode.level || "Unknown";
+        div.className = `flex gap-3 text-xs border-l-2 pl-3 py-1 animate-fade-in ${
+            status === "DANGER" ? "border-rose-500" : "border-zinc-700"
+        }`;
+        div.innerHTML =
+            <span class="opacity-50 font-mono text-zinc-500">${time}</span> +
+            ` <span class="${colorClass}">${status}</span>` +
+            ` <span class="text-zinc-300">${message}</span>`;
 
-      // 🎚 MPUs: /sensors/MPU1, /sensors/MPU2, /sensors/MPU3
-      const mpu1 = data.MPU1 || {};
-      const mpu2 = data.MPU2 || {};
-      const mpu3 = data.MPU3 || {};
+        log.prepend(div);
+    }
 
-      systemState.tilt1 = mpu1.pitch ?? 0;
-      systemState.tilt2 = mpu2.pitch ?? 0;
+    // --- Manual Test Button ---
+    document.getElementById("force-danger-btn").addEventListener("click", () => {
+        appState.sensors.mpu1 = 28;
+        appState.sensors.mpu2 = 26;
+        appState.sensors.mpu3 = 10;
+        appState.sensors.soil = 45;
+        appState.sensors.rain = 110;
 
-      const vibList = [mpu1.vib, mpu2.vib, mpu3.vib].filter(Boolean);
-      let vibStatus = "Low";
-      if (vibList.some(v => v.includes("HighRisk") || v.includes("Movement") || v.includes("Shock"))) {
-        vibStatus = "High";
-      } else if (vibList.some(v => v.includes("Warning") || v.includes("LowRisk"))) {
-        vibStatus = "Medium";
-      }
-      systemState.vibration = vibStatus;
-
-      // 🌧 Rain: /sensors/rain/risk
-      const rainNode = data.rain || {};
-      const rainRisk = rainNode.risk || "Very Low";
-      systemState.rain = ["Moderate", "High", "Extreme"].includes(rainRisk);
-
-      // Seismic label: use MPU3 vib or fallback
-      systemState.seismic = mpu3.vib || mpu2.vib || mpu1.vib || "Normal";
-
-      // Controls (shared path /sensors)
-      systemState.buzzer     = !!data.buzzer;
-      systemState.lights     = !!data.lights;
-      systemState.barrier    = !!data.barrier;
-      systemState.siren      = !!data.siren;
-      systemState.roadClosed = !!data.roadClosed;
-
-      const soilRiskName = soilLevel;
-
-      // Global status decision
-      if (
-        ["CriticalSaturation", "HighSaturation"].includes(soilRiskName) ||
-        ["High", "Extreme"].includes(rainRisk) ||
-        vibStatus === "High"
-      ) {
-        systemState.status = "DANGER";
-      } else if (
-        ["Moist-Risk", "Wet", "VeryWet"].includes(soilRiskName) ||
-        rainRisk === "Moderate" ||
-        vibStatus === "Medium"
-      ) {
-        systemState.status = "WARNING";
-      } else {
-        systemState.status = "SAFE";
-      }
-
-      updateDisplay();
+        processSensorData();
+        addLogEntry("TEST", "Manual Simulation Triggered");
     });
 
-    // ----- Manual control handlers -----
-    document.getElementById("buzzerOn").addEventListener("click", () => {
-      systemState.buzzer = true;
-      pushToFirebase({ buzzer: true });
-      updateDisplay();
+    document.getElementById("clear-log").addEventListener("click", () => {
+        document.getElementById("alert-log").innerHTML =
+            '<div class="flex gap-3 text-zinc-600"><span>--:--:--</span><span>Log cleared.</span></div>';
     });
+</script>
 
-    document.getElementById("buzzerOff").addEventListener("click", () => {
-      systemState.buzzer = false;
-      pushToFirebase({ buzzer: false });
-      updateDisplay();
-    });
-
-    document.getElementById("lightsOn").addEventListener("click", () => {
-      systemState.lights = true;
-      pushToFirebase({ lights: true });
-      updateDisplay();
-    });
-
-    document.getElementById("lightsOff").addEventListener("click", () => {
-      systemState.lights = false;
-      pushToFirebase({ lights: false });
-      updateDisplay();
-    });
-
-    document.getElementById("barrierClose").addEventListener("click", () => {
-      systemState.barrier = true;
-      systemState.roadClosed = true;
-      pushToFirebase({ barrier: true, roadClosed: true });
-      updateDisplay();
-    });
-
-    document.getElementById("barrierOpen").addEventListener("click", () => {
-      systemState.barrier = false;
-      systemState.roadClosed = false;
-      pushToFirebase({ barrier: false, roadClosed: false });
-      updateDisplay();
-    });
-
-    document.getElementById("sirenOn").addEventListener("click", () => {
-      systemState.siren = true;
-      pushToFirebase({ siren: true });
-      updateDisplay();
-    });
-
-    document.getElementById("sirenOff").addEventListener("click", () => {
-      systemState.siren = false;
-      pushToFirebase({ siren: false });
-      updateDisplay();
-    });
-
-    // ----- Simulation buttons -----
-    document.getElementById("simulateRain").addEventListener("click", () => {
-      simulationMode = true;   // turn on simulation
-
-      systemState.status = "DANGER";
-      systemState.rain = true;
-      systemState.soil = 85;
-      systemState.vibration = "Medium";
-      systemState.seismic = "Rain Storm";
-
-      systemState.buzzer = true;
-      systemState.lights = true;
-      systemState.barrier = true;
-      systemState.siren = true;
-      systemState.roadClosed = true;
-
-      pushToFirebase({
-        buzzer: true,
-        lights: true,
-        barrier: true,
-        siren: true,
-        roadClosed: true
-      });
-
-      updateDisplay();
-    });
-
-    document.getElementById("simulateEarthquake").addEventListener("click", () => {
-      simulationMode = true;   // turn on simulation
-
-      systemState.status = "DANGER";
-      systemState.seismic = "ALERT";
-      systemState.vibration = "High";
-      systemState.tilt1 = 25;
-      systemState.tilt2 = 28;
-
-      systemState.buzzer = true;
-      systemState.lights = true;
-      systemState.barrier = true;
-      systemState.siren = true;
-      systemState.roadClosed = true;
-
-      pushToFirebase({
-        buzzer: true,
-        lights: true,
-        barrier: true,
-        siren: true,
-        roadClosed: true
-      });
-
-      updateDisplay();
-    });
-
-    document.getElementById("resetSim").addEventListener("click", () => {
-      simulationMode = false;  // back to real sensor mode
-
-      systemState = {
-        status: "SAFE",
-        soil: 45,
-        tilt1: 2,
-        tilt2: 3,
-        vibration: "Low",
-        rain: false,
-        seismic: "Normal",
-        buzzer: false,
-        lights: false,
-        barrier: false,
-        siren: false,
-        roadClosed: false
-      };
-
-      pushToFirebase({
-        buzzer: false,
-        lights: false,
-        barrier: false,
-        siren: false,
-        roadClosed: false
-      });
-
-      updateDisplay();
-    });
-
-    // Update timestamp every second
-    setInterval(() => {
-      const now = new Date();
-      timestamp.textContent = "Last Synced: " + now.toLocaleTimeString();
-    }, 1000);
-  </script>
 </body>
 </html>
