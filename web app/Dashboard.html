@@ -207,6 +207,10 @@
                         <span class="text-sm text-zinc-500">deg</span>
                     </div>
                     <div id="mpu3-status" class="text-[10px] font-mono mt-2 text-emerald-400">Stable</div>
+                    <!-- Vibration badge -->
+                    <div id="mpu3-vib" class="mt-1 text-[10px] font-mono inline-block px-2 py-1 rounded bg-zinc-900/60 border border-zinc-800 text-zinc-400">
+                        Vibration: --
+                    </div>
                 </div>
             </div>
 
@@ -230,6 +234,10 @@
                         <span class="text-sm text-zinc-500">deg</span>
                     </div>
                     <div id="mpu1-status" class="text-[10px] font-mono mt-2 text-emerald-400">Stable</div>
+                    <!-- Vibration badge -->
+                    <div id="mpu1-vib" class="mt-1 text-[10px] font-mono inline-block px-2 py-1 rounded bg-zinc-900/60 border border-zinc-800 text-zinc-400">
+                        Vibration: --
+                    </div>
                 </div>
             </div>
 
@@ -253,6 +261,10 @@
                         <span class="text-sm text-zinc-500">deg</span>
                     </div>
                     <div id="mpu2-status" class="text-[10px] font-mono mt-2 text-emerald-400">Stable</div>
+                    <!-- Vibration badge -->
+                    <div id="mpu2-vib" class="mt-1 text-[10px] font-mono inline-block px-2 py-1 rounded bg-zinc-900/60 border border-zinc-800 text-zinc-400">
+                        Vibration: --
+                    </div>
                 </div>
             </div>
 
@@ -345,303 +357,356 @@
     </div>
 
     <!-- ===================== FIREBASE + LOGIC SCRIPT ===================== -->
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
-        import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-database.js";
+   <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
+    import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-database.js";
 
-        const firebaseConfig = {
-            apiKey: "AIzaSyCSEWW0wawOzJgvxyOmDqXMqE8nihprCd0",
-            authDomain: "iot-project-3c897.firebaseapp.com",
-            databaseURL: "https://iot-project-3c897-default-rtdb.asia-southeast1.firebasedatabase.app",
-            projectId: "iot-project-3c897",
-            storageBucket: "iot-project-3c897.firebasestorage.app",
-            messagingSenderId: "876143785284",
-            appId: "1:876143785284:web:3435ff5210b9ea92475311",
-            measurementId: "G-X44B4KWT65"
-        };
+    const firebaseConfig = {
+        apiKey: "AIzaSyCSEWW0wawOzJgvxyOmDqXMqE8nihprCd0",
+        authDomain: "iot-project-3c897.firebaseapp.com",
+        databaseURL: "https://iot-project-3c897-default-rtdb.asia-southeast1.firebasedatabase.app",
+        projectId: "iot-project-3c897",
+        storageBucket: "iot-project-3c897.firebasestorage.app",
+        messagingSenderId: "876143785284",
+        appId: "1:876143785284:web:3435ff5210b9ea92475311",
+        measurementId: "G-X44B4KWT65"
+    };
 
-        // Initialize Firebase
-        const app = initializeApp(firebaseConfig);
-        const db = getDatabase(app);
+    // Initialize Firebase
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
 
-        // --- APP STATE ---
-        let appState = {
-            sensors: {
-                mpu1: 0,
-                mpu2: 0,
-                mpu3: 0,
-                soil: 0,
-                rain: 0,
-                temp: 0,
-                humid: 0
-            },
-            status: "SAFE",
-            lastUpdate: Date.now()
-        };
+    // --- APP STATE ---
+    let appState = {
+        sensors: {
+            mpu1: 0,
+            mpu2: 0,
+            mpu3: 0,
+            vib1: "Low",
+            vib2: "Low",
+            vib3: "Low",
+            soil: 0,
+            rain: 0,
+            temp: 0,
+            humid: 0
+        },
+        status: "SAFE",
+        lastUpdate: Date.now(),
+        landslide: false,        // ESP landslide flag
+        soilRiskText: "--"       // from ESP if available
+    };
 
-        // --- FIREBASE LISTENER (PATH = sensor_data) ---
-        const sensorsRef = ref(db, "sensor_data");
+    // --- FIREBASE LISTENER (PATH = sensor_data) ---
+    const sensorsRef = ref(db, "sensor_data");
 
-        onValue(
-            sensorsRef,
-            (snapshot) => {
-                const data = snapshot.val();
-                updateConnectionStatus(true);
+    onValue(
+        sensorsRef,
+        (snapshot) => {
+            const data = snapshot.val();
+            updateConnectionStatus(true);
 
-                if (data) {
-                    // Your ESP sends these keys:
-                    // MPU1_Tilt, MPU1_Vibration, MPU1_Risk, MPU2_Tilt, MPU3_Tilt, Soil, Rain, Humidity, Temperature
-                    appState.sensors.mpu1 = parseFloat(data.MPU1_Tilt ?? 0);
-                    appState.sensors.mpu2 = parseFloat(data.MPU2_Tilt ?? 0);
-                    appState.sensors.mpu3 = parseFloat(data.MPU3_Tilt ?? 0);
-                    appState.sensors.soil = parseFloat(data.Soil ?? 0);
-                    appState.sensors.rain = parseFloat(data.Rain ?? 0);
-                    appState.sensors.temp = parseFloat(data.Temperature ?? 0);
-                    appState.sensors.humid = parseFloat(data.Humidity ?? 0);
+            if (data) {
+                // From ESP8266 code:
+                // MPU1_Tilt, MPU1_Vibration, MPU2_Tilt, MPU2_Vibration, MPU3_Tilt, MPU3_Vibration
+                // SoilPercent, SoilRisk, RainMM, Humidity, Temperature, Landslide ("YES"/"NO")
 
-                    appState.lastUpdate = Date.now();
-                    processSensorData();
-                }
-            },
-            (error) => {
-                console.error("Firebase Read Error:", error);
-                updateConnectionStatus(false);
+                appState.sensors.mpu1 = parseFloat(data.MPU1_Tilt ?? 0);
+                appState.sensors.mpu2 = parseFloat(data.MPU2_Tilt ?? 0);
+                appState.sensors.mpu3 = parseFloat(data.MPU3_Tilt ?? 0);
+
+                // vibration strings
+                appState.sensors.vib1 = (data.MPU1_Vibration ?? "Low").toString();
+                appState.sensors.vib2 = (data.MPU2_Vibration ?? "Low").toString();
+                appState.sensors.vib3 = (data.MPU3_Vibration ?? "Low").toString();
+
+                // Soil: prefer SoilPercent, fallback to Soil
+                appState.sensors.soil = parseFloat(
+                    data.SoilPercent ?? data.Soil ?? 0
+                );
+
+                // Rain: prefer RainMM, fallback to Rain
+                appState.sensors.rain = parseFloat(
+                    data.RainMM ?? data.Rain ?? 0
+                );
+
+                appState.sensors.temp  = parseFloat(data.Temperature ?? 0);
+                appState.sensors.humid = parseFloat(data.Humidity ?? 0);
+
+                // ESP landslide final decision
+                const landRaw = (data.Landslide ?? "NO").toString().toUpperCase();
+                appState.landslide = (landRaw === "YES");
+
+                // Soil risk text from ESP if available
+                appState.soilRiskText = data.SoilRisk ?? "--";
+
+                appState.lastUpdate = Date.now();
+                processSensorData();
             }
-        );
+        },
+        (error) => {
+            console.error("Firebase Read Error:", error);
+            updateConnectionStatus(false);
+        }
+    );
 
-        // --- CONNECTION BADGE ---
-        function updateConnectionStatus(connected) {
-            const dot = document.getElementById("conn-dot");
-            const ping = document.getElementById("conn-ping");
-            const text = document.getElementById("conn-text");
+    // --- CONNECTION BADGE ---
+    function updateConnectionStatus(connected) {
+        const dot = document.getElementById("conn-dot");
+        const ping = document.getElementById("conn-ping");
+        const text = document.getElementById("conn-text");
 
-            if (connected) {
-                dot.classList.remove("bg-zinc-600", "bg-red-500");
-                dot.classList.add("bg-emerald-500");
-                ping.classList.remove("hidden");
-                text.innerText = "Live Stream";
-                text.classList.add("text-emerald-500");
-            } else {
-                dot.classList.remove("bg-emerald-500");
-                dot.classList.add("bg-red-500");
-                ping.classList.add("hidden");
-                text.innerText = "Offline";
-                text.classList.remove("text-emerald-500");
+        if (connected) {
+            dot.classList.remove("bg-zinc-600", "bg-red-500");
+            dot.classList.add("bg-emerald-500");
+            ping.classList.remove("hidden");
+            text.innerText = "Live Stream";
+            text.classList.add("text-emerald-500");
+        } else {
+            dot.classList.remove("bg-emerald-500");
+            dot.classList.add("bg-red-500");
+            ping.classList.add("hidden");
+            text.innerText = "Offline";
+            text.classList.remove("text-emerald-500");
+        }
+    }
+
+    // --- LOGIC CORE ---
+    function processSensorData() {
+        const s = appState.sensors;
+
+        const t1 = Math.abs(s.mpu1);
+        const t2 = Math.abs(s.mpu2);
+        const t3 = Math.abs(s.mpu3);
+        const maxTilt = Math.max(t1, t2, t3);
+
+        let newStatus = "SAFE";
+        let reasons = [];
+        let riskLevel = 0; // 0=Safe, 1=Watch, 2=Alert, 3=Danger/Evac
+
+        // 1. Rain logic (NBRO)
+        if (s.rain >= 150) {
+            riskLevel = Math.max(riskLevel, 3);
+            reasons.push("Rain >150mm (NBRO Evac)");
+        } else if (s.rain >= 100) {
+            riskLevel = Math.max(riskLevel, 2);
+            reasons.push("Rain >100mm (NBRO Alert)");
+        } else if (s.rain >= 75) {
+            riskLevel = Math.max(riskLevel, 1);
+            reasons.push("Rain >75mm (NBRO Watch)");
+        }
+
+        // 2. Soil × slope (the table you gave)
+        if (s.soil >= 20 && s.soil < 40 && maxTilt > 25) {
+            riskLevel = Math.max(riskLevel, 2);
+            reasons.push(Moderate: Soil ${Math.round(s.soil)}% + Slope >25°);
+        } else if (s.soil >= 40 && s.soil < 60 && maxTilt > 25) {
+            riskLevel = Math.max(riskLevel, 3);
+            reasons.push(High: Soil ${Math.round(s.soil)}% + Slope >25°);
+        } else if (s.soil >= 60 && maxTilt > 15) {
+            riskLevel = Math.max(riskLevel, 3);
+            reasons.push(Critical: Soil ${Math.round(s.soil)}% + Slope >15°);
+        }
+
+        // 3. Pure slope rule
+        if (maxTilt > 45) {
+            riskLevel = Math.max(riskLevel, 3);
+            reasons.push("Extreme Slope Instability (>45°)");
+        }
+
+        // 4. ESP FINAL LANDSLIDE FLAG
+        if (appState.landslide) {
+            riskLevel = 3;
+            reasons.unshift("ESP Landslide Pattern Detected (3-MPU logic)");
+        }
+
+        // Map riskLevel → status
+        if (riskLevel === 3) newStatus = "DANGER";
+        else if (riskLevel === 2) newStatus = "WARNING";
+        else if (riskLevel === 1) newStatus = "WARNING";
+        else newStatus = "SAFE";
+
+        // Log only when status changes
+        if (newStatus !== appState.status) {
+            if (
+                newStatus === "DANGER" ||
+                newStatus === "WARNING" ||
+                (appState.status !== "SAFE" && newStatus === "SAFE")
+            ) {
+                addLogEntry(newStatus, reasons.join(", ") || "Conditions normalized.");
             }
         }
 
-        // --- LOGIC CORE ---
-        function processSensorData() {
-            const s = appState.sensors;
+        appState.status = newStatus;
+        updateUI(reasons, maxTilt);
+    }
 
-            const t1 = Math.abs(s.mpu1);
-            const t2 = Math.abs(s.mpu2);
-            const t3 = Math.abs(s.mpu3);
-            const maxTilt = Math.max(t1, t2, t3);
+    // --- UI UPDATES ---
+    function updateUI(reasons, maxTilt) {
+        const s = appState.sensors;
 
-            let newStatus = "SAFE";
-            let reasons = [];
-            let riskLevel = 0; // 0=Safe, 1=Watch, 2=Alert, 3=Evac/Crit
+        // MPU cards (tilt + vibration)
+        updateMPUCard("mpu1", s.mpu1, s.vib1);
+        updateMPUCard("mpu2", s.mpu2, s.vib2);
+        updateMPUCard("mpu3", s.mpu3, s.vib3);
 
-            // 1. Rain logic (NBRO)
-            if (s.rain >= 150) {
-                riskLevel = Math.max(riskLevel, 3);
-                reasons.push("Rain >150mm (NBRO Evac)");
-            } else if (s.rain >= 100) {
-                riskLevel = Math.max(riskLevel, 2);
-                reasons.push("Rain >100mm (NBRO Alert)");
-            } else if (s.rain >= 75) {
-                riskLevel = Math.max(riskLevel, 1);
-                reasons.push("Rain >75mm (NBRO Watch)");
-            }
+        // Soil
+        document.getElementById("soil-val").innerText = Math.round(s.soil);
+        document.getElementById("soil-bar").style.width = Math.min(100, s.soil) + "%";
 
-            // 2. Soil × slope
-            if (s.soil >= 20 && s.soil < 40 && maxTilt > 25) {
-                riskLevel = Math.max(riskLevel, 2);
-                reasons.push(Mod Risk: Soil ${Math.round(s.soil)}% + Slope >25°);
-            } else if (s.soil >= 40 && s.soil < 60 && maxTilt > 25) {
-                riskLevel = Math.max(riskLevel, 3);
-                reasons.push(High Risk: Soil ${Math.round(s.soil)}% + Slope >25°);
-            } else if (s.soil >= 60 && maxTilt > 15) {
-                riskLevel = Math.max(riskLevel, 3);
-                reasons.push(CRITICAL: Soil ${Math.round(s.soil)}% + Slope >15°);
-            }
+        const soilMsg = document.getElementById("soil-risk-text");
+        if (s.soil >= 60 && maxTilt > 15)
+            soilMsg.innerHTML = 'Slope-adjusted risk: <span class="text-rose-500 font-bold">CRITICAL</span>';
+        else if (s.soil >= 40 && maxTilt > 25)
+            soilMsg.innerHTML = 'Slope-adjusted risk: <span class="text-orange-400">HIGH</span>';
+        else if (s.soil >= 20 && maxTilt > 25)
+            soilMsg.innerHTML = 'Slope-adjusted risk: <span class="text-amber-400">MODERATE</span>';
+        else
+            soilMsg.innerHTML = 'Slope-adjusted risk: <span class="text-emerald-400">LOW</span>';
 
-            // 3. Pure slope
-            if (maxTilt > 45) {
-                riskLevel = Math.max(riskLevel, 3);
-                reasons.push("Extreme Slope Instability");
-            }
-
-            if (riskLevel === 3) newStatus = "DANGER";
-            else if (riskLevel === 2) newStatus = "WARNING";
-            else if (riskLevel === 1) newStatus = "WARNING";
-            else newStatus = "SAFE";
-
-            if (newStatus !== appState.status) {
-                if (
-                    newStatus === "DANGER" ||
-                    newStatus === "WARNING" ||
-                    (appState.status !== "SAFE" && newStatus === "SAFE")
-                ) {
-                    addLogEntry(newStatus, reasons.join(", ") || "Conditions normalized.");
-                }
-            }
-
-            appState.status = newStatus;
-            updateUI(reasons, maxTilt);
+        // Rain
+        document.getElementById("rain-val").innerText = Math.round(s.rain);
+        const rStat = document.querySelector("#rain-status span");
+        if (s.rain >= 150) {
+            rStat.innerText = "Evacuation";
+            rStat.className = "text-rose-500 font-bold";
+        } else if (s.rain >= 100) {
+            rStat.innerText = "Alert";
+            rStat.className = "text-orange-400 font-bold";
+        } else if (s.rain >= 75) {
+            rStat.innerText = "Watch";
+            rStat.className = "text-amber-400 font-bold";
+        } else {
+            rStat.innerText = "Normal";
+            rStat.className = "text-zinc-400";
         }
 
-        // --- UI UPDATES ---
-        function updateUI(reasons, maxTilt) {
-            const s = appState.sensors;
+        // Environment
+        document.getElementById("temp-val").innerText = s.temp.toFixed(1);
+        document.getElementById("humid-val").innerText = Math.round(s.humid);
 
-            // MPU cards
-            updateMPUCard("mpu1", s.mpu1);
-            updateMPUCard("mpu2", s.mpu2);
-            updateMPUCard("mpu3", s.mpu3);
+        // Main status card
+        const card = document.getElementById("status-card");
+        const txt = document.getElementById("status-display");
+        const bar = document.getElementById("risk-bar");
+        const msg = document.getElementById("status-msg");
+        const overlay = document.getElementById("danger-overlay");
 
-            // Soil
-            document.getElementById("soil-val").innerText = Math.round(s.soil);
-            document.getElementById("soil-bar").style.width = Math.min(100, s.soil) + "%";
+        card.classList.remove("glow-safe", "glow-warning", "glow-danger");
 
-            const soilMsg = document.getElementById("soil-risk-text");
-            if (s.soil >= 60 && maxTilt > 15)
-                soilMsg.innerHTML = 'Slope-adjusted risk: <span class="text-rose-500 font-bold">CRITICAL</span>';
-            else if (s.soil >= 40 && maxTilt > 25)
-                soilMsg.innerHTML = 'Slope-adjusted risk: <span class="text-orange-400">HIGH</span>';
-            else if (s.soil >= 20 && maxTilt > 25)
-                soilMsg.innerHTML = 'Slope-adjusted risk: <span class="text-amber-400">MODERATE</span>';
-            else
-                soilMsg.innerHTML = 'Slope-adjusted risk: <span class="text-emerald-400">LOW</span>';
+        if (appState.status === "SAFE") {
+            card.classList.add("glow-safe");
+            txt.innerText = "SAFE";
+            txt.className = "text-6xl lg:text-7xl font-bold text-emerald-400 tracking-tighter mt-4";
+            bar.className = "h-full bg-emerald-500 w-0 transition-all duration-700";
+            bar.style.width = "5%";
+            msg.innerText = "All sensors within NBRO safety baselines.";
+            msg.className = "text-sm text-zinc-400 font-mono border-l-2 border-emerald-500/30 pl-3";
+            overlay.classList.remove("animate-danger-overlay", "opacity-30");
+            overlay.classList.add("opacity-0");
+        } else if (appState.status === "WARNING") {
+            card.classList.add("glow-warning");
+            txt.innerText = "WARNING";
+            txt.className = "text-6xl lg:text-7xl font-bold text-amber-400 tracking-tighter mt-4";
+            bar.className = "h-full bg-amber-500 w-0 transition-all duration-700";
+            bar.style.width = "50%";
+            msg.innerText = reasons.join(". ") || "Elevated risk factors detected.";
+            msg.className = "text-sm text-zinc-400 font-mono border-l-2 border-amber-500/30 pl-3";
+            overlay.classList.remove("animate-danger-overlay", "opacity-30");
+            overlay.classList.add("opacity-0");
+        } else {
+            card.classList.add("glow-danger");
+            txt.innerText = "DANGER";
+            txt.className = "text-6xl lg:text-7xl font-bold text-rose-500 tracking-tighter mt-4 animate-pulse";
+            bar.className = "h-full bg-rose-500 w-0 transition-all duration-700";
+            bar.style.width = "100%";
+            msg.innerText = (reasons.join(". ") || "Critical conditions.") + " EVACUATE.";
+            msg.className = "text-sm text-rose-300 font-mono border-l-2 border-rose-500 pl-3 font-bold";
+            overlay.classList.remove("opacity-0");
+            overlay.classList.add("opacity-30", "animate-danger-overlay");
+        }
+    }
 
-            // Rain
-            document.getElementById("rain-val").innerText = Math.round(s.rain);
-            const rStat = document.querySelector("#rain-status span");
-            if (s.rain >= 150) {
-                rStat.innerText = "Evacuation";
-                rStat.className = "text-rose-500 font-bold";
-            } else if (s.rain >= 100) {
-                rStat.innerText = "Alert";
-                rStat.className = "text-orange-400 font-bold";
-            } else if (s.rain >= 75) {
-                rStat.innerText = "Watch";
-                rStat.className = "text-amber-400 font-bold";
-            } else {
-                rStat.innerText = "Normal";
-                rStat.className = "text-zinc-400";
-            }
+    function updateMPUCard(idBase, val, vib) {
+        const elVal = document.getElementById(${idBase}-val);
+        const elStat = document.getElementById(${idBase}-status);
+        const elVib = document.getElementById(${idBase}-vib);
 
-            // Environment
-            document.getElementById("temp-val").innerText = s.temp.toFixed(1);
-            document.getElementById("humid-val").innerText = Math.round(s.humid);
+        const absVal = Math.abs(val);
+        elVal.innerText = absVal.toFixed(1);
 
-            // Main status
-            const card = document.getElementById("status-card");
-            const txt = document.getElementById("status-display");
-            const bar = document.getElementById("risk-bar");
-            const msg = document.getElementById("status-msg");
-            const overlay = document.getElementById("danger-overlay");
-
-            card.classList.remove("glow-safe", "glow-warning", "glow-danger");
-
-            if (appState.status === "SAFE") {
-                card.classList.add("glow-safe");
-                txt.innerText = "SAFE";
-                txt.className = "text-6xl lg:text-7xl font-bold text-emerald-400 tracking-tighter mt-4";
-                bar.className = "h-full bg-emerald-500 w-0 transition-all duration-700";
-                bar.style.width = "5%";
-                msg.innerText = "All sensors within NBRO safety baselines.";
-                msg.className = "text-sm text-zinc-400 font-mono border-l-2 border-emerald-500/30 pl-3";
-                overlay.classList.remove("animate-danger-overlay", "opacity-30");
-                overlay.classList.add("opacity-0");
-            } else if (appState.status === "WARNING") {
-                card.classList.add("glow-warning");
-                txt.innerText = "WARNING";
-                txt.className = "text-6xl lg:text-7xl font-bold text-amber-400 tracking-tighter mt-4";
-                bar.className = "h-full bg-amber-500 w-0 transition-all duration-700";
-                bar.style.width = "50%";
-                msg.innerText = reasons.join(". ") || "Elevated risk factors detected.";
-                msg.className = "text-sm text-zinc-400 font-mono border-l-2 border-amber-500/30 pl-3";
-                overlay.classList.remove("animate-danger-overlay", "opacity-30");
-                overlay.classList.add("opacity-0");
-            } else {
-                card.classList.add("glow-danger");
-                txt.innerText = "DANGER";
-                txt.className = "text-6xl lg:text-7xl font-bold text-rose-500 tracking-tighter mt-4 animate-pulse";
-                bar.className = "h-full bg-rose-500 w-0 transition-all duration-700";
-                bar.style.width = "100%";
-                msg.innerText = (reasons.join(". ") || "Critical conditions.") + " EVACUATE.";
-                msg.className = "text-sm text-rose-300 font-mono border-l-2 border-rose-500 pl-3 font-bold";
-                overlay.classList.remove("opacity-0");
-                overlay.classList.add("opacity-30", "animate-danger-overlay");
-            }
+        // tilt text
+        if (absVal > 45) {
+            elStat.innerText = "Highly Variable (>45°)";
+            elStat.className = "text-[10px] font-mono mt-2 text-rose-400 font-bold";
+        } else if (absVal > 35) {
+            elStat.innerText = "High Slope (35-45°)";
+            elStat.className = "text-[10px] font-mono mt-2 text-orange-400";
+        } else if (absVal > 25) {
+            elStat.innerText = "Mod-High (25-35°)";
+            elStat.className = "text-[10px] font-mono mt-2 text-amber-400";
+        } else if (absVal > 15) {
+            elStat.innerText = "Low-Mod (15-25°)";
+            elStat.className = "text-[10px] font-mono mt-2 text-emerald-200";
+        } else {
+            elStat.innerText = "Very Low (<15°)";
+            elStat.className = "text-[10px] font-mono mt-2 text-emerald-400";
         }
 
-        function updateMPUCard(idBase, val) {
-            const elVal = document.getElementById(${idBase}-val);
-            const elStat = document.getElementById(${idBase}-status);
+        // vibration badge
+        const vText = (vib || "Low").toString();
+        elVib.innerText = "Vibration: " + vText;
 
-            const absVal = Math.abs(val);
-            elVal.innerText = absVal.toFixed(1);
-
-            if (absVal > 45) {
-                elStat.innerText = "Highly Variable (>45°)";
-                elStat.className = "text-[10px] font-mono mt-2 text-rose-400 font-bold";
-            } else if (absVal > 35) {
-                elStat.innerText = "High Slope (35-45°)";
-                elStat.className = "text-[10px] font-mono mt-2 text-orange-400";
-            } else if (absVal > 25) {
-                elStat.innerText = "Mod-High (25-35°)";
-                elStat.className = "text-[10px] font-mono mt-2 text-amber-400";
-            } else if (absVal > 15) {
-                elStat.innerText = "Low-Mod (15-25°)";
-                elStat.className = "text-[10px] font-mono mt-2 text-emerald-200";
-            } else {
-                elStat.innerText = "Very Low (<15°)";
-                elStat.className = "text-[10px] font-mono mt-2 text-emerald-400";
-            }
+        if (vText.toUpperCase() === "HIGH") {
+            elVib.className = "mt-1 text-[10px] font-mono inline-block px-2 py-1 rounded bg-rose-500/10 border border-rose-500/40 text-rose-300";
+        } else {
+            elVib.className = "mt-1 text-[10px] font-mono inline-block px-2 py-1 rounded bg-zinc-900/60 border border-zinc-800 text-zinc-400";
         }
+    }
 
-        function addLogEntry(status, message) {
-            const log = document.getElementById("alert-log");
-            const div = document.createElement("div");
-            const time = new Date().toLocaleTimeString("en-US", { hour12: false });
+    function addLogEntry(status, message) {
+        const log = document.getElementById("alert-log");
+        const div = document.createElement("div");
+        const time = new Date().toLocaleTimeString("en-US", { hour12: false });
 
-            let colorClass = "text-zinc-400";
-            if (status === "DANGER") colorClass = "text-rose-400 font-bold";
-            if (status === "WARNING") colorClass = "text-amber-400";
-            if (status === "SAFE") colorClass = "text-emerald-400";
+        let colorClass = "text-zinc-400";
+        if (status === "DANGER") colorClass = "text-rose-400 font-bold";
+        if (status === "WARNING") colorClass = "text-amber-400";
+        if (status === "SAFE") colorClass = "text-emerald-400";
 
-            div.className = `flex gap-3 text-xs border-l-2 pl-3 py-1 animate-fade-in ${
-                status === "DANGER" ? "border-rose-500" : "border-zinc-700"
-            }`;
+        div.className = `flex gap-3 text-xs border-l-2 pl-3 py-1 animate-fade-in ${
+            status === "DANGER" ? "border-rose-500" : "border-zinc-700"
+        }`;
 
-            div.innerHTML =
-                <span class="opacity-50 font-mono text-zinc-500">${time}</span> +
-                ` <span class="${colorClass}">${status}</span>` +
-                ` <span class="text-zinc-300">${message}</span>`;
+        div.innerHTML =
+            <span class="opacity-50 font-mono text-zinc-500">${time}</span> +
+            ` <span class="${colorClass}">${status}</span>` +
+            ` <span class="text-zinc-300">${message}</span>`;
 
-            log.prepend(div);
-        }
+        log.prepend(div);
+    }
 
-        // --- Manual simulation button ---
-        document.getElementById("force-danger-btn").addEventListener("click", () => {
-            appState.sensors.mpu1 = 28;
-            appState.sensors.mpu2 = 26;
-            appState.sensors.mpu3 = 10;
-            appState.sensors.soil = 45;
-            appState.sensors.rain = 110;
+    // --- Manual simulation button ---
+    document.getElementById("force-danger-btn").addEventListener("click", () => {
+        appState.sensors.mpu1 = 28;
+        appState.sensors.mpu2 = 26;
+        appState.sensors.mpu3 = 10;
+        appState.sensors.soil = 45;
+        appState.sensors.rain = 110;
+        appState.sensors.vib1 = "High";
+        appState.sensors.vib2 = "High";
+        appState.sensors.vib3 = "Low";
+        appState.landslide = true;  // simulate ESP landslide
 
-            processSensorData();
-            addLogEntry("TEST", "Manual Simulation Triggered");
-        });
+        processSensorData();
+        addLogEntry("TEST", "Manual Simulation Triggered (Landslide=YES)");
+    });
 
-        // --- Clear log button ---
-        document.getElementById("clear-log").addEventListener("click", () => {
-            document.getElementById("alert-log").innerHTML =
-                '<div class="flex gap-3 text-zinc-600"><span>--:--:--</span><span>Log cleared.</span></div>';
-        });
-    </script>
+    // --- Clear log button ---
+    document.getElementById("clear-log").addEventListener("click", () => {
+        document.getElementById("alert-log").innerHTML =
+            '<div class="flex gap-3 text-zinc-600"><span>--:--:--</span><span>Log cleared.</span></div>';
+    });
+</script>
+
 </body>
 </html>
