@@ -1,5 +1,3 @@
-
-
 #include <ESP8266WiFi.h>
 #include <Firebase_ESP_Client.h>
 #include <SoftwareSerial.h>
@@ -7,24 +5,19 @@
 #define WIFI_SSID     "ZTE Blade V50 Design"
 #define WIFI_PASSWORD "imaadh0234897651"
 
-// -------- Firebase --------
 #define API_KEY      "AIzaSyCSEWW0wawOzJgvxyOmDqXMqE8nihprCd0"
 #define DATABASE_URL "https://iot-project-3c897-default-rtdb.asia-southeast1.firebasedatabase.app"
 
 #define USER_EMAIL    "kosalaathapaththu1234@gmail.com"
 #define USER_PASSWORD "Plapytome2@"
 
-// Firebase objects
 FirebaseData fbdo;
 FirebaseAuth auth;
 FirebaseConfig config;
 
-// Arduino → ESP serial pins
-// Arduino D3 (TX) → ESP D5 (RX)
-// Arduino D2 (RX) → ESP D6 (TX)
+//d5 rx d6 tx
 SoftwareSerial arduinoSerial(D5, D6);
 
-// ----------- Firebase error print -----------
 void printFbError(const String &tag) {
   Serial.print("[");
   Serial.print(tag);
@@ -32,7 +25,6 @@ void printFbError(const String &tag) {
   Serial.println(fbdo.errorReason());
 }
 
-// ----------- Upload MPU values -----------
 void sendMPU(const String &label, float pitch, const String &tilt, long delta, const String &vib) {
   String base = "/sensors/" + label;  // /sensors/MPU1, /sensors/MPU2, /sensors/MPU3
 
