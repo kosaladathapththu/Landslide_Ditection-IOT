@@ -13,6 +13,7 @@ DHT dht(DHTPIN, DHTTYPE);
 // MPU addresses
 #define MPU1_ADDR 0x68
 #define MPU2_ADDR 0x69
+#define MPU3_ADDR 0x70   // <-- set this to your real 3rd MPU address
 
 // Serial to ESP8266
 #define RX_PIN 3
@@ -37,6 +38,12 @@ void setup() {
   Wire.write(0);
   Wire.endTransmission(true);
 
+  // Init MPU3 (top)
+  Wire.beginTransmission(MPU3_ADDR);
+  Wire.write(0x6B);
+  Wire.write(0);
+  Wire.endTransmission(true);
+
   Serial.println("Arduino ready.");
 }
 
@@ -49,11 +56,13 @@ void loop() {
 
   float mpu1_angle = readMPU(MPU1_ADDR);
   float mpu2_angle = readMPU(MPU2_ADDR);
+  float mpu3_angle = readMPU(MPU3_ADDR);
 
-  // Create CSV
+  // Create CSV: soil,rain,hum,temp,mpu1,mpu2,mpu3
   String csv = String(soil) + "," + String(rain) + "," +
                String(hum) + "," + String(temp) + "," +
-               String(mpu1_angle) + "," + String(mpu2_angle);
+               String(mpu1_angle) + "," + String(mpu2_angle) + "," +
+               String(mpu3_angle);
 
   espSerial.println(csv);
   Serial.println("Sent to ESP: " + csv);
